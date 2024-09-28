@@ -14,6 +14,15 @@
 
 #define SIMULACRUM_TYPE_KEY "simulacrum_type"
 
+#define HOARFROST_SHOTS_KEY "hoarfrost_shot_count"
+constexpr int MAX_HOARFROST_SHOTS = 4;
+
+#define HELLFIRE_PATH_KEY "hellfire_mortar_path"
+
+#define SERVITOR_SPELL_KEY "servitor_spell"
+
+constexpr int BOULDER_ABRASION_DAMAGE = 5;
+
 spret cast_summon_small_mammal(int pow, god_type god, bool fail);
 
 bool canine_familiar_is_alive();
@@ -41,12 +50,10 @@ spret cast_conjure_ball_lightning(int pow, god_type god, bool fail);
 int ball_lightning_hd(int pow, bool random = true);
 int mons_ball_lightning_hd(int pow, bool random = true);
 int mons_ball_lightning_per_cast(int pow, bool random = true);
+dice_def lightning_spire_damage(int pow);
 spret cast_summon_lightning_spire(int pow, god_type god, bool fail);
 
 spret cast_call_imp(int pow, god_type god, bool fail);
-bool summon_demon_type(monster_type mon, int pow, god_type god = GOD_NO_GOD,
-                       int spell = 0, bool friendly = true);
-spret cast_summon_demon(int pow);
 spret summon_shadow_creatures();
 spret cast_summon_horrible_things(int pow, god_type god, bool fail);
 bool can_cast_malign_gateway();
@@ -69,6 +76,7 @@ spell_type player_servitor_spell();
 bool spell_servitorable(spell_type spell);
 void init_servitor(monster* servitor, actor* caster, int pow);
 spret cast_spellforged_servitor(int pow, god_type god, bool fail);
+void remove_player_servitor();
 
 monster_type pick_random_wraith();
 spret cast_haunt(int pow, const coord_def& where, god_type god, bool fail);
@@ -86,7 +94,8 @@ void reset_battlesphere(monster* mons);
 dice_def battlesphere_damage(int pow);
 
 spret cast_fulminating_prism(actor* caster, int pow,
-                                  const coord_def& where, bool fail);
+                                  const coord_def& where, bool fail,
+                                  bool is_shadow = false);
 int prism_hd(int pow, bool random = true);
 
 monster* find_spectral_weapon(const actor* agent);
@@ -112,13 +121,25 @@ void kiku_unearth_wretches();
 spret cast_foxfire(actor &agent, int pow, god_type god, bool fail,
                    bool marshlight = false);
 spret foxfire_swarm();
+bool summon_hell_out_of_bat(const actor &agent, coord_def pos);
 bool summon_spider(const actor &agent, coord_def pos, god_type god,
                         spell_type spell, int pow);
 spret summon_spiders(actor &agent, int pow, god_type god, bool fail = false);
+bool summon_swarm_clone(const monster& agent, coord_def target_pos);
 
 spret summon_butterflies();
 
+int barrelling_boulder_hp(int pow);
 spret cast_broms_barrelling_boulder(actor& agent, coord_def pos, int pow, bool fail);
 
 string mons_simulacrum_immune_reason(const monster *mons);
 spret cast_simulacrum(coord_def target, int pow, bool fail);
+
+dice_def hoarfrost_cannonade_damage(int pow, bool finale);
+spret cast_hoarfrost_cannonade(const actor& agent, int pow, bool fail);
+
+dice_def hellfire_mortar_damage(int pow);
+spret cast_hellfire_mortar(const actor& agent, bolt& beam, int pow, bool fail);
+bool hellfire_mortar_active(const actor& agent);
+
+bool make_soul_wisp(const actor& agent, actor& victim);

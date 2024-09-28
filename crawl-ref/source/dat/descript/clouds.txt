@@ -107,9 +107,8 @@ paralysis.
 %%%%
 rain cloud
 
-An extremely localized rainstorm. It may produce pools of shallow water, or
-temporarily deepen existing pools. Beings made entirely out of fire are averse
-to spending much time in the rain.
+An extremely localised rainstorm. It may produce short-lived pools of shallow
+water. Beings made of fire are averse to spending much time in the rain.
 %%%%
 mutagenic fog cloud
 
@@ -190,3 +189,14 @@ The explosion is concussive, knocking adjacent creatures away.
 sparks cloud
 
 A trail of electric sparks. Atmospheric, but harmless.
+%%%%
+faint pestilence cloud
+
+The faintest hint of foul pestilence, seeping out from somewhere. While not
+dense enough to be harmful yet, it is thickening rapidly.
+%%%%
+magnetised fragments cloud
+
+A cloud of countless tiny fragments of magnetised metal, still vibrating
+slightly from a recent electrical discharge. They will function as an attractor
+for the Magnavolt spell until they dissipate.

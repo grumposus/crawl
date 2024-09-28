@@ -233,6 +233,12 @@ public:
                 *reason = "Your stasis prevents you from being hasted.";
             return false;
         }
+        else if (have_passive(passive_t::no_haste))
+        {
+            if (reason)
+                *reason = "You are protected from being hasted by Cheibriados.";
+            return false;
+        }
         return true;
     }
 
@@ -246,8 +252,7 @@ public:
         if (was_known && !check_known_quaff())
             return false;
 
-        if (effect())
-            did_god_conduct(DID_HASTY, 10, was_known);
+        effect(); // Chei prevents haste in haste_player().
         return true;
     }
 };
@@ -391,7 +396,7 @@ public:
 
     bool effect(bool=true, int=40, bool=true) const override
     {
-        debuff_player();
+        debuff_player(true);
         mpr("You feel magically purged.");
         const int old_contam_level = get_contamination_level();
         contaminate_player(-1 * (1000 + random2(4000)));
@@ -457,8 +462,6 @@ public:
                 afflictions.push_back("liquid flames");
             if (you.duration[DUR_QUAD_DAMAGE])
                 afflictions.push_back("!!!QUAD DAMAGE!!!");
-            if (you.has_mutation(MUT_GLOWING))
-                afflictions.push_back("body"); // all flesh is a curse...
             if (you.form == transformation::flux)
                 afflictions.push_back("form");
             mprf(MSGCH_DURATION,
@@ -521,7 +524,7 @@ public:
     {
         if (player_under_penance(GOD_HEPLIAKLQANA))
         {
-            simple_god_message(" appreciates the memories.",
+            simple_god_message(" appreciates the memories.", false,
                                GOD_HEPLIAKLQANA);
             reduce_xp_penance(GOD_HEPLIAKLQANA,
                               750 * you.experience_level * pow / 40);
@@ -589,13 +592,26 @@ public:
         return true;
     }
 
-    bool effect(bool=true, int = 40, bool=true) const override
+    bool effect(bool=true, int = 40, bool is_potion = true) const override
     {
-        inc_mp(POT_MAGIC_MP);
+        int amount = is_potion ? you.scale_potion_mp_healing(POT_MAGIC_MP)
+                               : POT_MAGIC_MP;
+        inc_mp(amount);
         if (you.has_mutation(MUT_HP_CASTING))
             mpr("Magic washes over you without effect.");
         else
+        {
+            if (is_potion && player_equip_unrand(UNRAND_KRYIAS))
+            {
+                item_def* item = you.slot_item(EQ_BODY_ARMOUR);
+                mprf("%s enhances the restoration.",
+                     item->name(DESC_THE, false, false, false).c_str());
+            }
+            else if (is_potion && you.has_mutation(MUT_DOUBLE_POTION_HEAL))
+                mpr("You savour every drop.");
+
             mpr("Magic courses through your body.");
+        }
         return true;
     }
 };
@@ -772,7 +788,7 @@ public:
         return _can_mutate(reason, temp);
     }
 
-    bool effect(bool = true, int = 40, bool is_potion= true) const override
+    bool effect(bool = true, int = 40, bool = true) const override
     {
         if (have_passive(passive_t::cleanse_mut_potions))
             simple_god_message(" cleanses your potion of mutation!");
@@ -791,7 +807,7 @@ public:
         for (int i = 0; i < add_mutations; i++)
             mutated |= mutate(RANDOM_MUTATION, "potion of mutation", false);
         // Sometimes one good mutation.
-        if (coinflip() || is_potion && you.has_mutation(MUT_DOUBLE_POTION_HEAL))
+        if (coinflip())
         {
             mutated |= mutate(RANDOM_GOOD_MUTATION, "potion of mutation",
                               false);

@@ -7,6 +7,8 @@
 
 #include <set>
 
+#include "ac-type.h"
+#include "beam-type.h"
 #include "branch-type.h"
 #include "equipment-type.h"
 #include "item-prop-enum.h"
@@ -100,6 +102,13 @@ brand_type get_weapon_brand(const item_def &item) PURE;
 special_armour_type get_armour_ego_type(const item_def &item) PURE;
 special_missile_type get_ammo_brand(const item_def &item) PURE;
 
+// staff functions:
+const char* staff_type_name(stave_type staff) PURE;
+skill_type staff_skill(stave_type staff) PURE;
+beam_type staff_damage_type(stave_type staff) PURE;
+int staff_damage_mult(stave_type staff) PURE;
+ac_type staff_ac_check(stave_type staff) PURE;
+
 // armour functions:
 bool armour_is_enchantable(const item_def &item) PURE;
 int armour_max_enchant(const item_def &item) PURE;
@@ -129,6 +138,7 @@ bool is_offensive_wand(const item_def &item) PURE;
 bool is_enchantable_weapon(const item_def &weapon, bool unknown = false) PURE;
 bool is_enchantable_armour(const item_def &arm, bool unknown = false) PURE;
 
+bool is_shield(const item_def *item) PURE;
 bool is_shield(const item_def &item) PURE;
 bool is_offhand(const item_def &item) PURE;
 bool is_shield_incompatible(const item_def &weapon,
@@ -137,6 +147,9 @@ bool shield_reflects(const item_def &shield) PURE;
 int shield_block_limit(const item_def &shield) PURE;
 
 int guile_adjust_willpower(int wl) PURE;
+
+bool is_regen_item(const item_def& item);
+bool is_mana_regen_item(const item_def& item);
 
 // Only works for armour/weapons/missiles
 // weapon functions:
@@ -159,7 +172,7 @@ bool is_blessed_convertible(const item_def &item) PURE;
 bool convert2good(item_def &item);
 bool convert2bad(item_def &item);
 
-int get_vorpal_type(const item_def &item) PURE;
+vorpal_damage_type get_vorpal_type(const item_def &item) PURE;
 int get_damage_type(const item_def &item) PURE;
 int single_damage_type(const item_def &item) PURE;
 
@@ -169,7 +182,6 @@ skill_type item_attack_skill(const item_def &item) PURE;
 skill_type item_attack_skill(object_class_type wclass, int wtype) IMMUTABLE;
 
 bool staff_uses_evocations(const item_def &item);
-skill_type staff_skill(stave_type s);
 bool item_skills(const item_def &item, set<skill_type> &skills);
 
 // launcher and ammo functions:

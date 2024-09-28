@@ -323,6 +323,12 @@ static string mi_calc_freeze_damage(monster* mons)
     return dice_def_string(freeze_damage(pow, false));
 }
 
+static string mi_calc_scorch_damage(monster* mons)
+{
+    const int pow = mons_power_for_hd(SPELL_SCORCH, mons->get_hit_dice());
+    return dice_def_string(scorch_damage(pow, false));
+}
+
 static string mi_calc_irradiate_damage(const monster &mon)
 {
     const int pow = mons_power_for_hd(SPELL_IRRADIATE, mon.get_hit_dice());
@@ -351,6 +357,8 @@ static string mons_human_readable_spell_damage_string(monster* monster,
             return ""; // Fake damage beam
         case SPELL_FREEZE:
             return mi_calc_freeze_damage(monster);
+        case SPELL_SCORCH:
+            return mi_calc_scorch_damage(monster);
         case SPELL_SMITING:
             return mi_calc_smiting_damage(monster);
         case SPELL_BRAIN_BITE:
@@ -371,6 +379,8 @@ static string mons_human_readable_spell_damage_string(monster* monster,
             return "2x" + dice_def_string(zap_damage(ZAP_FOXFIRE, pow, true));
         case SPELL_PLASMA_BEAM:
             return "2x" + dice_def_string(zap_damage(ZAP_PLASMA, pow, true));
+        case SPELL_PERMAFROST_ERUPTION:
+            return "2x" + dice_def_string(zap_damage(ZAP_PERMAFROST_ERUPTION_COLD, pow, true));
         case SPELL_WATERSTRIKE:
             spell_beam.damage = waterstrike_damage(monster->spell_hd(sp));
             break;
@@ -583,7 +593,6 @@ static int _mi_create_monster(mons_spec spec)
         monster->behaviour = BEH_SEEK;
         monster->foe = MHITYOU;
         msg::suppress mx;
-        monster->del_ench(ENCH_SUBMERGED);
         return monster->mindex();
     }
     return NON_MONSTER;
@@ -1090,6 +1099,9 @@ int main(int argc, char* argv[])
                 case AF_HOLY:
                     monsterattacks += colour(YELLOW, "(holy)");
                     break;
+                case AF_FOUL_FLAME:
+                    monsterattacks += colour(LIGHTMAGENTA, "(foul flame)");
+                    break;
                 case AF_PAIN:
                     monsterattacks += colour(RED, "(pain)");
                     break;
@@ -1141,6 +1153,9 @@ int main(int argc, char* argv[])
                 case AF_BARBS:
                     monsterattacks += colour(RED, "(barbs)");
                     break;
+                case AF_HELL_HUNT:
+                    monsterattacks += colour(YELLOW, "(summon h. hound / h. rat)");
+                    break;
                 case AF_SPIDER:
                     monsterattacks += colour(YELLOW, "(summon spider)");
                     break;
@@ -1151,10 +1166,13 @@ int main(int argc, char* argv[])
                     monsterattacks += colour(BLUE, "(sleep)");
                     break;
                 case AF_FLANK:
-                    monsterattacks += "(flank)";
+                    monsterattacks += colour(BROWN, "(flank)");
                     break;
                 case AF_DRAG:
                     monsterattacks += colour(BROWN, "(drag)");
+                    break;
+                case AF_SWARM:
+                    monsterattacks += colour(BROWN, "(swarm)");
                     break;
                 case AF_CRUSH:
                 case AF_PLAIN:
@@ -1258,6 +1276,8 @@ int main(int argc, char* argv[])
         mons_check_flag(bool(me->bitfields & M_FAST_REGEN), monsterflags,
                         "regen");
         mons_check_flag(mon.is_unbreathing(), monsterflags, "unbreathing");
+        mons_check_flag(mon.is_insubstantial(), monsterflags, "insubstantial");
+        mons_check_flag(mon.is_amorphous(), monsterflags, "amorphous");
 
         string spell_string = construct_spells(spell_lists, damages);
         if (shapeshifter || mon.type == MONS_PANDEMONIUM_LORD)
@@ -1327,6 +1347,7 @@ int main(int argc, char* argv[])
         res2(LIGHTRED, miasma, mon.res_miasma());
         res2(LIGHTMAGENTA, neg, mon.res_negative_energy(true));
         res2(YELLOW, holy, mon.res_holy_energy());
+        res2(LIGHTMAGENTA, foul_flame, mon.res_foul_flame());
         res2(LIGHTMAGENTA, torm, mon.res_torment());
         res2(LIGHTBLUE, vortex, mon.res_polar_vortex());
         res2(LIGHTRED, napalm, mon.res_sticky_flame());

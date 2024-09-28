@@ -64,7 +64,7 @@ function ice_cave_portal(e)
     e.kfeat("a = x")
     e.rtile("a = wall_ice_block")
     e.colour(".1234 = blue")
-    e.ftile(".12345O+^ = floor_ice")
+    e.ftile(".12345O+^DEFH = floor_ice")
 end
 
 --[[
@@ -452,7 +452,6 @@ end
 #
 ###############################################################################
 
-
 ###############################################################################
 # Entry vaults that place for both ice cave difficulties.
 
@@ -542,7 +541,7 @@ DEPTH:  D:11-13, Lair:3-, Orc
 WEIGHT: 5
 : ice_cave_portal(_G)
 MONS:   wolf, yak, polar bear, rime drake, ice dragon
-SUBST:  D = 12 .:1, E = 2 3:5 .:1, F = 3 4:2, H = 4:2 5:8
+SUBST:  D = 12 .:1, E = 2 3:5 .:1, F = 3 4:2, H = 4:8 5:2
 MAP
 xx    xxxxxxx
 axxxxxxaaaaaxx
@@ -586,6 +585,24 @@ MAP
 ''a..waw
  ''..aw
   ''w'
+ENDMAP
+
+NAME:   portal_ice_cave_entry_guarded_snowflake
+TAGS:   no_monster_gen transparent
+: ice_cave_portal(_G)
+MONS:   polar bear, rime drake
+MAP
+.....a.....
+.a...a...a.
+...aa.aa...
+..a.a.a.a..
+..aa...aa..
+aa..1O2..aa
+..aa...aa..
+..a.a.a.a..
+...aa.aa...
+.a...a...a.
+.....a.....
 ENDMAP
 
 ###############################################################################
@@ -1065,8 +1082,8 @@ SUBST:   ! = .
 SHUFFLE: rsu / rr! / zzz / zzz
 SUBST:   r = ., su = w, z = x, b = bbccc
 : place_freezing_vapour_machine(_G, 8)
-TILE:    b = bedeviled_crystal_cocytus
-: set_feature_name("crystal_wall", "bedeviled crystal wall")
+TILE:    b = bedevilled_crystal_cocytus
+: set_feature_name("crystal_wall", "bedevilled crystal wall")
 : ice_cave_appearance(_G)
 MAP
                     xxxxxx
@@ -1591,22 +1608,22 @@ SHUFFLE: qrs
 : if dgn.persist.ice_cave_hard then
 MONS:    glowing shapeshifter simulacrum / slime creature simulacrum \
          / great orb of eyes simulacrum
-MONS:    orange crystal statue, slime creature band, quicksilver ooze
+MONS:    orange crystal statue, slime creature band, void ooze
 MONS:    azure jelly, rockslime
 {{
 set_random_mon_list("glowing shapeshifter simulacrum w:20" ..
     " / slime creature simulacrum w:20 / great orb of eyes simulacrum w:20" ..
-    " / slime creature w:40 / quicksilver ooze w:20 / azure jelly")
+    " / slime creature w:40 / void ooze w:20 / azure jelly")
 }}
 SUBST:   p = 4, q = 455, r = 5, s = 6
 : else
 MONS:    shapeshifter simulacrum / glowing shapeshifter simulacrum \
          / slime creature simulacrum / great orb of eyes simulacrum
-MONS:    ice statue, slime creature band, quicksilver ooze, azure jelly
+MONS:    ice statue, slime creature band, void ooze, azure jelly
 {{
 set_random_mon_list("shapeshifter simulacrum" ..
     " / glowing shapeshifter simulacrum / slime creature simulacrum" ..
-    " / great orb of eyes simulacrum / slime creature w:20 / quicksilver ooze")
+    " / great orb of eyes simulacrum / slime creature w:20 / void ooze")
 }}
 SUBST:   q = 34455
 :end

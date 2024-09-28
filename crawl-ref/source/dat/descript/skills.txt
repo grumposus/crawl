@@ -72,9 +72,9 @@ them.
 %%%%
 Throwing
 
-Training Throwing will make thrown weapons (such as javelins) more effective.
-In particular, it makes boomerangs more likely to return to their thrower,
-and makes certain magical darts more likely to have an effect.
+Training Throwing will make thrown weapons (such as javelins) more accurate
+and damaging. It also makes certain magical darts more likely to have an
+effect.
 %%%%
 Armour
 
@@ -86,7 +86,7 @@ Dodging
 
 The Dodging skill will affect your chance of dodging an attack, be it melee,
 ranged or magical. Certain types of attack cannot be dodged, however, such as
-enchantments (which must be resisted with Willpower) and explosions.
+enchantments (which must be resisted with willpower) and explosions.
 %%%%
 Stealth
 

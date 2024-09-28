@@ -40,6 +40,7 @@ tileidx_t tileidx_monster(const monster_info& mon);
 tileidx_t tileidx_draco_base(const monster_info& mon);
 tileidx_t tileidx_draco_job(const monster_info& mon);
 tileidx_t tileidx_player_mons();
+tileidx_t tileidx_player_shadow();
 tileidx_t tileidx_tentacle(const monster_info& mon);
 
 tileidx_t tileidx_item(const item_def &item);
@@ -64,6 +65,7 @@ tileidx_t tileidx_known_brand(const item_def &item);
 tileidx_t tileidx_unseen_flag(const coord_def &gc);
 
 set<tileidx_t> status_icons_for(const monster_info &mon);
+set<tileidx_t> status_icons_for_player();
 
 // Return the level of enchantment as an int. None is 0, Randart is 4.
 int enchant_to_int(const item_def &item);

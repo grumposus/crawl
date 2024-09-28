@@ -93,7 +93,7 @@ TAGS:    depths_entry uniq_depths_entry chance_depths_entry
 ORIENT:  north
 DEPTH:   Depths, !Depths:$
 PLACE:   D:$
-WEIGHT:  1 (D:$), 10
+WEIGHT:  2 (D:$), 10
 : if (you.where() == dgn.level_name(dgn.br_entrance("Depths"))) then
 MONS:    shapeshifter, ugly thing, glowing shapeshifter
 MONS:    obsidian statue, 0 band / 9 band
@@ -110,6 +110,7 @@ MONS:    very ugly thing, glowing shapeshifter, glass eye band
 MONS:    orange crystal statue, 9 band / 8 band
 SUBST:   'ROG = ., I = x
 : end
+KFEAT:   T = fountain_eyes
 SHUFFLE: abcd, |ABCDE, n* / m$, or, pqs
 NSUBST:  a = 1:+ / * = + x:8
 SUBST:   b = + x:30, opq = +, cdrs = x, * = * |:1
@@ -121,7 +122,7 @@ xxxx....xE.......x..G.'''.x.................................xxxx
 x%E+3...x........+....'O'.x......x....x1...x2...x2...I3...I..Dxx
 x%Ex....x........x..G.'''Ex..................................DDx
 xxxxxxxx+xxx+xxxxxxxxxxxxxx..................................xxx
-x.......x.................+.0.............................5..8Dx
+x.......x.................+.0............T....T....T....T.5..8Dx
 x.......x.................x..................................xxx
 x.......+......5.8........xx+xx..............................DDx
 x.......x...............''x...x..x....x1...x1...x2...I3...I..Dxx
@@ -1046,7 +1047,7 @@ DEPTH:  D:12-, !D:$, Depths, !Depths:$
 SUBST:  x : xvb
 MONS:   occultist w:150 / arcanist w:150 / deep elf pyromancer w:60 / deep elf zephyrmancer w:60 / \
         orc wizard / orc sorcerer w:35 / tengu conjurer w:35 / nothing w:500
-MONS:   deep elf sorcerer / deep elf annihilator / lich / ancient lich w:5
+MONS:   walking crystal tome / walking frostbound tome / lich / ancient lich w:5
 ITEM:   any book / any jewellery / any wand / any misc w:3 / \
         any magical staff w:3 / any randart weapon w:3 / \
         any randart armour w:3

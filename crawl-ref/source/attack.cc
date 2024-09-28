@@ -24,6 +24,7 @@
 #include "exercise.h"
 #include "fight.h"
 #include "fineff.h"
+#include "god-abil.h"
 #include "god-conduct.h"
 #include "god-passive.h" // passive_t::no_haste
 #include "item-name.h"
@@ -64,7 +65,7 @@ attack::attack(actor *attk, actor *defn, actor *blame)
       art_props(0), unrand_entry(nullptr),
       attacker_to_hit_penalty(0), attack_verb("bug"), verb_degree(),
       no_damage_message(), special_damage_message(), aux_attack(), aux_verb(),
-      defender_shield(nullptr), fake_chaos_attack(false), simu(false),
+      defender_shield(nullptr), simu(false),
       aux_source(""), kill_type(KILLED_BY_MONSTER)
 {
     // No effective code should execute, we'll call init_attack again from
@@ -84,7 +85,9 @@ bool attack::handle_phase_blocked()
     if (attacker->is_player())
         behaviour_event(defender->as_monster(), ME_WHACK, attacker);
 
-    maybe_trigger_jinxbite();
+    // Use up a charge of Divine Shield, if active.
+    if (defender->is_player())
+        tso_expend_divine_shield_charge();
 
     return true;
 }
@@ -94,9 +97,8 @@ bool attack::handle_phase_damaged()
     // We have to check in_bounds() because removed kraken tentacles are
     // temporarily returned to existence (without a position) when they
     // react to damage.
-    if (defender->can_bleed()
+    if (defender->has_blood()
         && !defender->is_summoned()
-        && !defender->submerged()
         && in_bounds(defender->pos())
         && !simu)
     {
@@ -213,7 +215,7 @@ int attack::calc_pre_roll_to_hit(bool random)
         }
 
         // slaying bonus
-        mhit += slaying_bonus(wpn_skill == SK_THROWING);
+        mhit += slaying_bonus(wpn_skill == SK_THROWING, random);
 
         // vertigo penalty
         if (you.duration[DUR_VERTIGO])
@@ -307,7 +309,7 @@ int attack::calc_to_hit(bool random)
     // We already did this roll for players.
     if (!src.is_player())
         mhit = maybe_random2(mhit + 1, random);
-;
+
     dprf(DIAG_COMBAT, "%s: to-hit: %d",
          attacker->name(DESC_PLAIN).c_str(), mhit);
 
@@ -391,6 +393,7 @@ void attack::init_attack(skill_type unarmed_skill, int attack_number)
 
     defender_shield = defender ? defender->shield() : defender_shield;
 
+    unrand_entry = nullptr;
     if (weapon && weapon->base_type == OBJ_WEAPONS && is_artefact(*weapon))
     {
         artefact_properties(*weapon, art_props);
@@ -554,223 +557,6 @@ void attack::pain_affects_defender()
     }
 }
 
-static bool _is_chaos_polyable(const actor &defender)
-{
-    if (!defender.can_safely_mutate())
-        return false;  // no polymorphing undead
-
-    const monster* mon = defender.as_monster();
-    if (!mon)
-        return true;
-
-    return !mons_is_firewood(*mon) && !mons_invuln_will(*mon);
-}
-
-static bool _is_chaos_slowable(const actor &defender)
-{
-    const monster* mon = defender.as_monster();
-    if (!mon)
-        return true;
-
-    // What, no hasting oklobs? Boo.
-    return !mons_is_firewood(*mon) && !mon->is_stationary();
-}
-
-struct chaos_effect
-{
-    string name;
-    int chance;
-    function<bool(const actor& def)> valid;
-    beam_type flavour;
-    function<bool(attack &attack)> misc_effect;
-};
-
-// TODO: Unite this with _chaos_beam_flavour in beam.cc.
-// For now, update that when you update this.
-static const vector<chaos_effect> chaos_effects = {
-    {
-        "clone", 1, [](const actor &d) {
-            return d.is_monster() && mons_clonable(d.as_monster(), true);
-        },
-        BEAM_NONE, [](attack &attack) {
-            actor &defender = *attack.defender;
-            ASSERT(defender.is_monster());
-            monster *clone = clone_mons(defender.as_monster());
-            if (!clone)
-                return false;
-
-            const bool obvious_effect = you.can_see(defender) && you.can_see(*clone);
-
-            if (one_chance_in(3))
-                clone->attitude = coinflip() ? ATT_FRIENDLY : ATT_NEUTRAL;
-
-            // The player shouldn't get new permanent followers from cloning.
-            if (clone->attitude == ATT_FRIENDLY && !clone->is_summoned())
-                clone->mark_summoned(6, true, MON_SUMM_CLONE);
-            else
-                clone->flags |= (MF_NO_REWARD | MF_HARD_RESET);
-
-            // Monsters being cloned is interesting.
-            xom_is_stimulated(clone->friendly() ? 12 : 25);
-            return obvious_effect;
-        },
-    },
-    {
-        "polymorph", 2, _is_chaos_polyable, BEAM_POLYMORPH,
-    },
-    {
-        "rage", 5, [](const actor &defender) {
-            return (defender.can_go_berserk() && !defender.clarity());
-        }, BEAM_NONE, [](attack &attack) {
-            if (attack.defender->is_monster())
-            {
-                monster* mon = attack.defender->as_monster();
-                ASSERT(mon);
-                if (mon->can_go_frenzy()) {
-                    mon->go_frenzy(attack.attacker);
-                }
-            }
-            else
-                attack.defender->go_berserk(false);
-
-            return you.can_see(*attack.defender);
-        },
-    },
-    { "hasting", 12, _is_chaos_slowable, BEAM_HASTE },
-    { "mighting", 12, [](const actor &defender) {
-        return !defender.is_monster()
-               || (mons_has_attacks(*(defender.as_monster()))
-                   && !defender.as_monster()->has_ench(ENCH_MIGHT));
-    }, BEAM_MIGHT },
-    { "resistance", 10, [](const actor &defender) {
-        return defender.res_fire() < 3 && defender.res_cold() < 3 &&
-               defender.res_elec() < 3 && defender.res_poison() < 3 &&
-               defender.res_acid() < 3; }, BEAM_RESISTANCE, },
-    { "slowing", 10, _is_chaos_slowable, BEAM_SLOW },
-    { "confusing", 12, [](const actor &defender) {
-        return !(defender.clarity()); }, BEAM_CONFUSION },
-    { "weakening", 10, [](const actor & defender) {
-        return !defender.is_monster()
-               || mons_has_attacks(*(defender.as_monster()));
-    }, BEAM_WEAKNESS, },
-    { "will-halving", 10, [](const actor &defender) {
-       return !defender.is_monster()
-              || mons_invuln_will(*(defender.as_monster()));
-    }, BEAM_VULNERABILITY, },
-    { "blinking", 3, nullptr, BEAM_BLINK },
-    { "corroding", 5, [](const actor &defender) {
-        return defender.res_acid() < 3; },
-        BEAM_NONE, [](attack &attack) {
-           attack.defender->corrode_equipment();
-           return you.can_see(*attack.defender);
-       },
-    },
-    { "vitrifying", 5, nullptr, BEAM_VITRIFY, },
-    // Making a web even if the target is web-immune is cute, so.
-    { "ensnaring", 3, nullptr, BEAM_ENSNARE, },
-    {
-        "minipara", 3, [](const actor &defender) {
-            return !defender.is_monster()
-                    || !mons_is_firewood(*defender.as_monster());
-        }, BEAM_NONE, [](attack &attack) {
-            attack.defender->paralyse(attack.attacker, 1);
-            return you.can_see(*attack.defender);
-        },
-    },
-    {
-        "sleep", 3, [](const actor &defender) {
-            return defender.can_sleep();
-        }, BEAM_SLEEP,
-    },
-    {
-        "petrify", 3, [](const actor &defender) {
-            return _is_chaos_slowable(defender) && !defender.res_petrify();
-        }, BEAM_PETRIFY,
-    },
-};
-
-void attack::chaos_affects_defender()
-{
-    ASSERT(defender);
-
-    vector<pair<const chaos_effect&, int>> weights;
-    for (const chaos_effect &effect : chaos_effects)
-        if (!effect.valid || effect.valid(*defender))
-            weights.push_back({effect, effect.chance});
-
-    const chaos_effect &effect = *random_choose_weighted(weights);
-
-#ifdef NOTE_DEBUG_CHAOS_EFFECTS
-    take_note(Note(NOTE_MESSAGE, 0, 0, "CHAOS effect: " + effect.name), true);
-#endif
-
-    if (effect.misc_effect && effect.misc_effect(*this))
-        obvious_effect = true;
-
-    bolt beam;
-    beam.flavour = effect.flavour;
-    beam.no_saving_throw = true;
-
-    if (beam.flavour != BEAM_NONE)
-    {
-        if (defender->is_player() && have_passive(passive_t::no_haste)
-            && beam.flavour == BEAM_HASTE)
-        {
-            simple_god_message(" protects you from inadvertent hurry.");
-            obvious_effect = true;
-            return;
-        }
-
-        beam.glyph        = 0;
-        beam.range        = 0;
-        beam.colour       = BLACK;
-        beam.effect_known = false;
-        // Wielded brand is always known, but maybe this was from a call
-        // to chaos_affect_actor.
-        beam.effect_wanton = !fake_chaos_attack;
-
-        if (using_weapon() && you.can_see(*attacker))
-        {
-            beam.name = wep_name(DESC_YOUR);
-            beam.item = weapon;
-        }
-        else
-            beam.name = atk_name(DESC_THE);
-
-        beam.thrower =
-            (attacker->is_player())           ? KILL_YOU
-            : attacker->as_monster()->confused_by_you() ? KILL_YOU_CONF
-                                                        : KILL_MON;
-
-        if (beam.thrower == KILL_YOU || attacker->as_monster()->friendly())
-            beam.attitude = ATT_FRIENDLY;
-
-        beam.source_id = attacker->mid;
-
-        beam.source = defender->pos();
-        beam.target = defender->pos();
-
-        beam.damage = dice_def(damage_done + special_damage + aux_damage, 1);
-
-        beam.ench_power = beam.damage.num;
-
-        const bool you_could_see = you.can_see(*defender);
-        beam.fire();
-
-        if (you_could_see)
-        {
-            obvious_effect = beam.obvious_effect;
-            if (!defender->wont_attack() &&
-                (beam.flavour == BEAM_HASTE || beam.flavour == BEAM_MIGHT))
-                xom_is_stimulated(12);
-        }
-
-    }
-
-    if (!you.can_see(*attacker))
-        obvious_effect = false; // XXX: VERY dubious!
-}
-
 struct chaos_attack_type
 {
     attack_flavour flavour;
@@ -804,6 +590,8 @@ static const vector<chaos_attack_type> chaos_types = {
       [](const actor &d) { return d.holy_wrath_susceptible(); } },
     { AF_ANTIMAGIC, SPWPN_ANTIMAGIC,     5,
       [](const actor &d) { return d.antimagic_susceptible(); } },
+    { AF_FOUL_FLAME, SPWPN_FOUL_FLAME,   2,
+      [](const actor &d) { return d.res_foul_flame() < 3; } },
 };
 
 brand_type attack::random_chaos_brand()
@@ -837,6 +625,7 @@ brand_type attack::random_chaos_brand()
     case SPWPN_VAMPIRISM:       brand_name += "vampirism"; break;
     case SPWPN_HOLY_WRATH:      brand_name += "holy wrath"; break;
     case SPWPN_ANTIMAGIC:       brand_name += "antimagic"; break;
+    case SPWPN_FOUL_FLAME:      brand_name += "foul flame"; break;
     default:                    brand_name += "BUGGY"; break;
     }
 
@@ -1102,7 +891,7 @@ int attack::player_apply_slaying_bonuses(int damage, bool aux)
                         || (weapon && is_range_weapon(*weapon)
                                    && using_weapon());
     damage_plus += slaying_bonus(throwing);
-    damage_plus -= 4 * you.corrosion_amount();
+    damage_plus -= you.corrosion_amount();
 
     // XXX: should this also trigger on auxes?
     if (!aux && !ranged)
@@ -1113,16 +902,26 @@ int attack::player_apply_slaying_bonuses(int damage, bool aux)
 
 int attack::player_apply_final_multipliers(int damage, bool /*aux*/)
 {
-    // Can't affect much of anything as a shadow.
-    if (you.form == transformation::shadow)
-        damage = div_rand_round(damage, 2);
-
     // Spectral weapons deal "only" 70% of the damage that their
     // owner would, matching cleaving.
     if (attacker->type == MONS_SPECTRAL_WEAPON)
         damage = div_rand_round(damage * 7, 10);
 
     return damage;
+}
+
+int attack::apply_rev_penalty(int damage) const
+{
+    if (!attacker->is_player()
+        || !you.has_mutation(MUT_WARMUP_STRIKES)
+        || you.rev_percent() >= FULL_REV_PERCENT)
+    {
+        return damage;
+    }
+    // 2/3rds at 0 rev, 100% at full rev
+    return div_rand_round(damage * 2 * FULL_REV_PERCENT
+                            + damage * you.rev_percent(),
+                          3 * FULL_REV_PERCENT);
 }
 
 int attack::player_apply_postac_multipliers(int damage)
@@ -1235,14 +1034,23 @@ int attack::calc_damage()
 int attack::test_hit(int to_land, int ev, bool randomise_ev)
 {
     int margin = AUTOMATIC_HIT;
+
     if (randomise_ev)
         ev = random2avg(2*ev, 2);
     if (to_land >= AUTOMATIC_HIT)
         return true;
-    else if (x_chance_in_y(MIN_HIT_MISS_PERCENTAGE, 100))
+
+    if (x_chance_in_y(MIN_HIT_MISS_PERCENTAGE, 100))
         margin = (random2(2) ? 1 : -1) * AUTOMATIC_HIT;
     else
         margin = to_land - ev;
+
+    if (attacker->is_player() && you.duration[DUR_BLIND])
+    {
+        const int distance = you.pos().distance_from(defender->pos());
+        if (x_chance_in_y(player_blind_miss_chance(distance), 100))
+            margin = -1;
+    }
 
 #ifdef DEBUG_DIAGNOSTICS
     dprf(DIAG_COMBAT, "to hit: %d; ev: %d; result: %s (%d)",
@@ -1281,8 +1089,12 @@ bool attack::attack_shield_blocked(bool verbose)
     if (defender == attacker)
         return false; // You can't block your own attacks!
 
-    if (defender->incapacitated())
+    // Divine Shield blocks are guaranteed, no matter what.
+    if (defender->incapacitated()
+        && !(defender->is_player() && you.duration[DUR_DIVINE_SHIELD]))
+    {
         return false;
+    }
 
     const int con_block = random2(attacker->shield_bypass_ability(to_hit));
     int pro_block = defender->shield_bonus();
@@ -1293,12 +1105,10 @@ bool attack::attack_shield_blocked(bool verbose)
     dprf(DIAG_COMBAT, "Defender: %s, Pro-block: %d, Con-block: %d",
          def_name(DESC_PLAIN).c_str(), pro_block, con_block);
 
-    if (pro_block >= con_block)
+    if (pro_block >= con_block && !defender->shield_exhausted()
+        || defender->is_player() && you.duration[DUR_DIVINE_SHIELD])
     {
         perceived_attack = true;
-
-        if (defender->shield_exhausted())
-            return false;
 
         if (ignores_shield(verbose))
             return false;
@@ -1372,8 +1182,8 @@ bool attack::apply_damage_brand(const char *what)
 
     if (!damage_done
         && (brand == SPWPN_FLAMING || brand == SPWPN_FREEZING
-            || brand == SPWPN_HOLY_WRATH || brand == SPWPN_ANTIMAGIC
-            || brand == SPWPN_VAMPIRISM))
+            || brand == SPWPN_HOLY_WRATH || brand == SPWPN_FOUL_FLAME
+            || brand == SPWPN_ANTIMAGIC || brand == SPWPN_VAMPIRISM))
     {
         // These brands require some regular damage to function.
         return false;
@@ -1405,6 +1215,9 @@ bool attack::apply_damage_brand(const char *what)
         break;
 
     case SPWPN_HOLY_WRATH:
+        if (attacker->undead_or_demonic())
+            break; // No holy wrath for thee!
+
         if (defender->holy_wrath_susceptible())
             special_damage = 1 + (random2(damage_done * 15) / 10);
 
@@ -1418,6 +1231,29 @@ bool attack::apply_damage_brand(const char *what)
                     attack_strength_punctuation(special_damage).c_str());
         }
         break;
+
+    case SPWPN_FOUL_FLAME:
+    {
+        if (attacker->is_holy())
+            break; // No foul flame for thee!
+
+        const int rff = defender->res_foul_flame();
+        if (rff < 0)
+            special_damage = 1 + (random2(damage_done) * 1.5);
+        else if (rff < 3)
+            special_damage = 1 + (random2(damage_done) / (rff + 1));
+
+        if (defender_visible && special_damage)
+        {
+            special_damage_message =
+                make_stringf(
+                    "%s %s%s",
+                    defender_name(false).c_str(),
+                    defender->conj_verb("convulse").c_str(),
+                    attack_strength_punctuation(special_damage).c_str());
+        }
+        break;
+    }
 
     case SPWPN_ELECTROCUTION:
         if (defender->res_elec() > 0)
@@ -1565,7 +1401,7 @@ bool attack::apply_damage_brand(const char *what)
     }
 
     case SPWPN_CHAOS:
-        chaos_affects_defender();
+        obvious_effect = chaos_affects_actor(defender, attacker);
         break;
 
     case SPWPN_ANTIMAGIC:
@@ -1746,6 +1582,10 @@ void attack::handle_noise(const coord_def & pos)
     if (stab_attempt)
         return;
 
+    // Shadow attacks are silent.
+    if (attacker->type == MONS_PLAYER_SHADOW)
+        return;
+
     int loudness = damage_done / 4;
 
     // All non-stab attacks make some noise.
@@ -1784,5 +1624,40 @@ void attack::maybe_trigger_fugue_wail(const coord_def pos)
         && (you.props[FUGUE_KEY].get_int() == FUGUE_MAX_STACKS))
     {
         do_fugue_wail(pos);
+    }
+}
+
+void attack::maybe_trigger_autodazzler()
+{
+    if (defender->is_player() && you.wearing_ego(EQ_GIZMO, SPGIZMO_AUTODAZZLE)
+        && one_chance_in(20))
+    {
+        bolt proj;
+        zappy(ZAP_AUTODAZZLE, you.get_experience_level(), false, proj);
+
+        proj.target = attacker->pos();
+        proj.source = you.pos();
+        proj.range = LOS_RADIUS;
+        proj.source_id = MID_PLAYER;
+        proj.draw_delay = 5;
+        proj.attitude = ATT_FRIENDLY;
+        proj.is_tracer = true;
+        proj.is_targeting = true;
+
+        // To suppress prompts for aiming at allies. We'll never fire in that
+        // situation anyway.
+        proj.thrower = KILL_MON_MISSILE;
+
+        // Make sure the beam path is clear
+        proj.fire();
+        if (proj.friend_info.count == 0)
+        {
+            mpr("Your autodazzler retaliates!");
+
+            proj.thrower = KILL_YOU_MISSILE;
+            proj.is_tracer = false;
+            proj.is_targeting = false;
+            proj.fire();
+        }
     }
 }

@@ -1,6 +1,7 @@
 drop_filter += useless_item
 
-auto_exclude += oklob,statue,roxanne,lightning spire,starflower,strange machine
+auto_exclude += oklob,statue,roxanne,lightning spire
+auto_exclude += scrub nettle,starflower,strange machine
 
 # Interrupting run and rest compound commands:
 runrest_ignore_monster += ^butterfly$:1
@@ -24,4 +25,5 @@ unusual_monster_items  = wand
 unusual_monster_items += disto,chaos
 unusual_monster_items += curare,atropa,datura,dispersal
 unusual_monster_items += throwing net
-unusual_monster_items += reflect
+# For regular items and artefacts
+unusual_monster_items += reflect,Reflect

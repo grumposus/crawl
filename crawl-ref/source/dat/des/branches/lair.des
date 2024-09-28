@@ -204,27 +204,28 @@ xx.''..'...xx
 xxxx..@..xxxx
 ENDMAP
 
-# Lair monsters near stair
+# A fair number of these aren't Lair monsters anymore,
+# but the idea still works, so.
 NAME:    dpeg_lair_monsters
 TAGS:    ruin lair_entry transparent
 ORIENT:  float
 MONS:    yak, death yak
-MONS:    iguana w:20 / black bear w:20 / komodo dragon / basilisk w:5
-MONS:    river rat / hell rat / quokka / rat
-MONS:    bullfrog w:40 / blink frog / cane toad
-SHUFFLE: 1345
-NSUBST:  1 = 2:11112 / * = 1..
-NSUBST:  3 = 1:2 / * = 2.., 5 = 1:4 / * = 4:5 .:9
-SUBST:   y = xx.
+MONS:    iguana w:30 / basilisk, komodo dragon
+MONS:    river rat / hell rat / black bear
+MONS:    bullfrog w:30 / blink frog, cane toad
+SHUFFLE: 1356
+NSUBST:  1 = 2 = 12 / 2:1 / 1:. / * = 1.., 3 = 2 = 334 / 2:3 / 1:. / * = 3..
+NSUBST:  5 = 2:5 / 1:. / * = 55., 6 = 2 = 6667 / * = 6:5 .:9
+SUBST:   y = xxx.
 KFEAT:   O = enter_lair
 MAP
 xxxxx...@...y
 x111.........
-x111.y...2...
+x111.y...3...
 x11.y...y...@
 x..yy.O.yy...
 @...y...y....
-...2...y2.yy.
+...3...y3.yy.
 ..........yy.
 y...@........
 ENDMAP
@@ -1230,13 +1231,14 @@ DEPTH:  Lair:2-, !Lair:$
 MONS:   centaur w:4 / spriggan
 MONS:   wolf, black bear, polar bear
 KMONS:  P = plant / bush
+KFEAT:  d = cache of baked goods
 NSUBST: Q = 2:1 / *:.
 NSUBST: R = 3:2 / 1:3 / 1:4 / *:.
 MAP
    xxxxxxxxx
   xxxttttxxxx
  xxxttttttttxx
-xxtttt...tttxxx
+xxtttt.d.tttxxx
 xttt..Q.Q..ttxx
 xttt.Q.R.Q.tttx
 xtt.........ttx
@@ -1281,9 +1283,12 @@ KMONS:   4 = spriggan rider / faun w:4
 KMONS:   9 = 9
 KITEM:   94 = *
 KFEAT:   94 = W
-SHUFFLE: wW'"-9 / ''GG'4 / '''0'% / ````1G
+KFEAT:   C = cache of fruit
+SHUFFLE: wW'"-9 / ''GG'4 / 'C'0'% / ```C1G
 SUBST:   t = t.., '. = p:49 .:405, W = WW., "w = wwwW
-NSUBST:  1 = 3=1 / 2=2 / 3 / .
+NSUBST:  1 = 3:1 / 2:2 / 1:3 / *:.
+TILE:    G = dngn_statue_elephant / dngn_statue_hydra / \
+             dngn_statue_dragon / dngn_statue_snail / dngn_statue_cat w:5
 MAP
       tt@@@tt
     ttt.....ttt
@@ -1309,7 +1314,9 @@ ENDMAP
 NAME:   grunt_forest_large_clearing_hut
 TAGS:   transparent
 DEPTH:  Lair
-MONS:   plant / bush, spriggan / centaur w:2
+MONS:   plant / bush
+KMONS:  2 = spriggan / centaur w:2
+KFEAT:  2 = cache of baked goods
 SUBST:  t = t..
 SUBST:  . = 1 .:90
 COLOUR: -*29 = lightgrey
@@ -1609,23 +1616,26 @@ NAME:   lemuel_fruit_fields
 TAGS:   allow_dup extra transparent decor
 DEPTH:  Lair
 ORIENT: float
-WEIGHT: 9
 MONS:   plant, butterfly
 ITEM:   gold
+KFEAT:  e = cache of fruit
 KFEAT:  ^~ = .
 : local size = crawl.random2(9)
 : if size > 7 then
-SUBST:  '`"- = ^:20 ~:15 ., . = d:3 .:150 1:10 2:4
+SUBST:  '`"- = ^:35 ~:5 .
+NSUBST: . = 2:1 / * = d:2 e:1 .:140 1:20 2:4
 : elseif size > 3 then
-SUBST:  "` = ^:20 ~:15 ., . = d:5 .:50 1:8 2:4
+SUBST:  "` = ^:35 ~:5 .
+NSUBST: . = 2:1 / * = d:3 e:2 .:42 1:18 2:4
 : else
-SUBST:  '" = ^:20 ~:15 ., . = d:5 .:50 1:8 2:4
+SUBST:  '" = ^:35 ~:5 .
+NSUBST: . = 2:1 / * = d:3 e:2 .:42 1:18 2:4
 : end
 CLEAR:  `'"-
-COLOUR: ^ = green
-FTILE:  ^ = floor_grass
+COLOUR: ^d = green
+FTILE:  ^.de12 = floor_grass
 COLOUR: ~ = brown
-FTILE:  ~ = floor_dirt
+FTILE:  ~ = floor_pebble_red
 MAP
        -------
      -----------
@@ -1651,24 +1661,23 @@ TAGS:   extra transparent decor
 DEPTH:  Lair, Snake
 ORIENT: float
 MONS:   plant, fungus
-KITEM:  a : stone
+ITEM:   stone q:1 no_pickup
+KFEAT:  a = cache of fruit
 : if crawl.one_chance_in(5) then
-SUBST:  '"~ = . 1
-SUBST:  0`-. = .:90 a:2 2:1
-SUBST:  _ = .:90 a:4
+SUBST:  '"~ = 1.
+SUBST:  `-. = .:90 2:1, _ = d
 : else
 CLEAR:  '-_
-SUBST:  `" = . a 2:1
-SUBST:  ~. = .:90 a:2 2:1
-SUBST:  0 = 1
+SUBST:  ~ = d:90 1:5 2:1, . = .:90 1:10 2:1
 : end
+NSUBST: `" = 1:a / 1:a. / *:.
 MAP
    ________
   _--------_
  _---..~..--_
 _--'.......--_
 _---..`"`.~--_
-_---..`0`..--_
+_---..`t`..--_
 _---..`"`..--_
  _--~....~.-_
   _--.....-_
@@ -1948,7 +1957,8 @@ ORIENT:  northeast
 DEPTH:   D:5-8, Lair:1-3
 MONS:    rat, quokka, river rat, hell rat
 ITEM:    gold / stone
-SUBST:   d = d$$$........., e = d$$$
+KFEAT:   e = cache of meat
+SUBST:   d = d$$$........., e : e$.
 SHUFFLE: 234 / 324 / 243
 : if you.in_branch("Lair") then
 NSUBST:  4 = 1:4 / * = 40, 3 = 2:3 / * = 34.
@@ -1963,11 +1973,12 @@ SUBST:   4 = 430
 SUBST:   4 = 30
 :   end
 : end
+TILE:    e = dngn_cache_of_pizza
 MAP
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-xxxxxxxxxx.eexxxxxxxxxxxxxxxxxxxxxxxxxxxx
-xxx343dxx.xxxxxxxx.334433xxxxxxxxx23..exx
+xxxxxxxxxxdeexxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxx343dxx.xxxxxxxx.334433xxxxxxxxx23.dexx
 xxd222...xxxxxxxx..224422xxxxxx1111...xxx
 x..111..xxxxxxxxx..111111.xxx.111...xxxxx
 xx.111..xxxxxxxxxx.11111..x......xxxxxxxx
@@ -1994,16 +2005,20 @@ ORIENT:  float
 DEPTH:   Lair:3-, !Lair:$
 MONS:    necromancer, elephant zombie
 MONS:    basilisk zombie / komodo dragon zombie
+KFEAT:   G = metal_statue
 SHUFFLE: 23
 NSUBST:  2 = 1:2 / * = 2., 3 = 1:3 / * = 3.
-SUBST:   % = %%%%%$$$**|
+SUBST:   % = %%%%%$$$**|, G = G.
+COLOUR:  G = mist
+TILE:    G = dngn_mystic_cage
+: set_feature_name("metal_statue", "mystic cage")
 MAP
              wwwwwwwww
         wwwwwwwwwwwwwwwww
      wwwwwwwwwwwwwwwwwwwwww
     wwwww..........wwwwwwwww
   wwwwww.xxxxxxxxxx.wwwwwwwww
- wwwwwww.x.3.2+.1.x..wwwwwwww
+ wwwwwww.x.3.2+.1Gx..wwwwwwww
  wwwwwww.x+xxxx2.3x..wwwwwwwww
 wwwwwwww.x.%%%x.32x..wwwwwwwww
 wwwwwwww.xxxxxxx+xx..wwwwwwwww
@@ -2209,12 +2224,13 @@ TAGS:   no_monster_gen
 DEPTH:  Lair
 MONS:   river rat band, hell rat, river rat / rat
 KMONS:  P = plant / fungus w:2
+KFEAT:  d = cache of baked goods
 NSUBST: ' = 1:1 / 2:P / 2:2 / 2:3
 MAP
  xxxx
  xxxxxx
 xxd.'xxxx
-xx..'''xx
+xx.%'''xx
 xx'''.''xx
 xxx'''''xx
   x'x'.''x
@@ -2227,8 +2243,10 @@ NAME:   kennysheep_abandoned_house
 TAGS:   ruin transparent
 DEPTH:  Lair
 MONS:   rat, river rat, hell rat
+KMONS:  D = pile of debris
 KITEM:  d = gold
-NSUBST: d = 1:d / 1:* / 1:9 / 1:3 / * = d11223.......
+KFEAT:  C = cache of fruit / cache of baked goods w:4
+NSUBST: d = 1:d / 1:C / 1:* / 1:9 / 1:3 / * = d11223......., c = 5:Dc / *:c
 MAP
       .......
 .......ccccc.........
@@ -2277,8 +2295,10 @@ ENDMAP
 NAME:   kennysheep_basilisk_garden
 TAGS:   transparent
 DEPTH:  Lair:3-
-MONS:   basilisk
-NSUBST: . = 2:1 / 3 = 111G / *:.
+MONS:   basilisk, pile of debris
+NSUBST: . = 2:1 / 3 = 11G / *:., G = 2:G2 / *:G
+TILE:   G = dngn_statue_axe / dngn_statue_cat / dngn_statue_centaur / \
+            dngn_statue_dwarf / dngn_statue_polearm / dngn_statue_tengu
 MAP
    .....
  ....G....
@@ -2493,10 +2513,10 @@ NAME:    minmay_guarded_unrand_snakebite
 TAGS:    ruin
 DEPTH:   Lair
 ORIENT:  southeast
-ITEM:    snakebite no_pickup
 KMONS:   A = adder
 KMONS:   B = water moccasin
 KMONS:   C = black mamba
+ITEM:    snakebite no_pickup
 SUBST:   1 = A B:2 .:48, 2 = A B:5 .:60, 3 = A B C:2 .:88, 4 = A:2 B C:4 .:64
 SUBST:   5 = A:1 B C .:84, 6 = B:5 C .:60, 7 = B.
 MAP
@@ -2583,18 +2603,18 @@ ORIENT: northeast
 KMONS: P = plant
 MONS: bullfrog / cane toad, water moccasin / black mamba, hydra
 FTILE: _ = floor_dirt
-SUBST: P = ..P, - = .:1 x
-NSUBST: " = 1:3 / 4:P / 3=P. / 2:. / 2=.W / *:W
+SUBST: P = ..P, p = P, - = .:1 x
+NSUBST: " = 4:P / 3=P. / 2:. / 2=.W / *:W
 NSUBST: ; = 3=12 / 2=12.. / 2:. / 2=.W / *:W
 NSUBST: ` = 1:1 . 1:2 / 1=12.., ' = 1=|* / 1=*% / *:%
 MAP
 xxxxxxxxxxxxxxxxxxxxxxxx
 xwwwwxxxxxxxxxxxxxxxxxxx
-PwwwwPPP;-;;+;;+."""""xx
-PwwwwwPP;-;;-;;x".""""xx
+PwwwwPPP;-;;+;;+p"""""xx
+PwwwwwPP;-;;-;;xp.""""xx
 PwwwwwwP;-+---;x".""""xx
 @PwwwwwPP;;;-;;x""."""xx
-.PwwwwwwP``;-;;x""".."xx
+.PwwwwwwP``;-;;x"""..3xx
 ..Pwwwwww``;---xxxxxx.xx
 ..Pwwwwwww.P;;;;PPPx''xx
  ..Pwwwwww_wwwPPPPPx''xx
@@ -2697,8 +2717,8 @@ ENDMAP
 NAME:   nicolae_lair_lil_pond
 TAGS:   transparent ruin decor extra
 DEPTH:  Lair
-NSUBST: D = . / x
-SUBST:  - = . / W
+NSUBST: D = 1:. / *:x
+SUBST:  - = .W
 MAP
 ............
 ....xxxx....
@@ -2785,9 +2805,9 @@ NAME:   nicolae_lair_time_for_slime
 TAGS:   transparent patrolling
 DEPTH:  Lair:4-
 KMONS:  1 = slime creature
-KMONS:  2 = azure jelly / quicksilver ooze
+KMONS:  2 = azure jelly / void ooze
 KMONS:  3 = jelly
-# Places 2-6 slime creatures, 1 azure jelly or quicksilver ooze, and
+# Places 2-6 slime creatures, 1 azure jelly or void ooze, and
 # 3-5 jellies.
 NSUBST: p = 1 / 3 / s, q = 1 / 3 / s, s = 4=1.. / 1=2 / 2=3. / .
 SUBST:  ' = `:40 %, ` = x..., - = x__
@@ -2955,7 +2975,7 @@ KMONS:   P = plant
 KITEM:   % = any, any
 KITEM:   *| = gold, gold, gold / maw talisman / maw talisman randart w:2, \
               any good_item
-NSUBST:  2 = 2:22334 / *:3, 8 = 1:8 / *:.
+NSUBST:  2 = 3:22334 / *:3, 8 = 1:8 / *:.
 SHUFFLE: %'*" / %'"|
 SUBST:   X = xx., z = xx`, ' = ., " = x, p = PP.
 SUBST:   H = 3:3 4:1, 0 = 2
@@ -2994,22 +3014,23 @@ ENDMAP
 
 # One of the three dragon's lair end vaults,
 # and the most dragon-focused of them.
-NAME:   guppyfry_lair_end_dragon
-TAGS:   patrolling no_monster_gen no_pool_fixup
-PLACE:  Lair:$
-ORIENT: southeast
-MONS:   rime drake / swamp drake / acid dragon / steam dragon
-MONS:   basilisk / komodo dragon, iguana
-MONS:   fire dragon / ice dragon, swamp dragon
-KMONS:  P = plant
-SUBST:  - = wwWW....%Ptt233, W = WWW., ? = 12**
+NAME:    guppyfry_lair_end_dragon
+TAGS:    patrolling no_monster_gen no_pool_fixup
+PLACE:   Lair:$
+ORIENT:  southeast
+MONS:    rime drake w:12 / swamp drake / acid dragon / steam dragon
+MONS:    basilisk / komodo dragon, iguana
+MONS:    fire dragon / ice dragon, swamp dragon
+KMONS:   P = plant
+SUBST:   - = wwWW....%Ptt233, W = WWW., ? = 12**
+SHUFFLE: 45
 : lair_small_ending(_G)
 MAP
 @..@..@..xxxxxxxxxxxxxxxxx
 xPWW-P.xxxxttttttttttxxxxx
 xttWW-ttttttttPWW-R.ttxxxx
 xtttW-tt.tttt-WwwWP.1ttxxx
-xtttWWtt...t--WwwwW-.tttxx
+xtttWWtt...t--WwwwW-1tttxx
 xtt1Wttt1.tt.WWttPWW.-tttx
 xttWw-tP.t..Wttt--WWW.tttx
 xxttWWt-1t..W--ttPWwwWttxx
@@ -3018,14 +3039,14 @@ xxtt--WttP.wWtttWwwwwWtttx
 xttP.tWWttwWPtt.WWWwwWttxx
 xttt.ttWww-.ttttPWwwwWtttx
 xxttP.P-W-.tt%?$.WwwW.ttxx
-xxtt...PWWttt*%.WwwW.ttxxx
-xxttt.t.-Wtt45*.WwwW.ttxxx
-xttttt..Wwttt*%..WW.tttxxx
+xxtt...PWWttt4%.WwwW.ttxxx
+xxttt.t.-Wtt***.WwwW.ttxxx
+xttttt..Wwttt5%..WW.tttxxx
 xxxxtt..-WWtt%?$.WwWW.ttxx
 xxxxxtt..-WWtttPWWwW..ttxx
 xxxxxxtt..PWWttWWwW.tttxxx
 xxxxxxxttt1.WWttWW..ttxxxx
-xxxxxxxxttt.WwwwWP-ttxxxxx
+xxxxxxxxttt1WwwwWP-ttxxxxx
 xxxxxxxxxtt.-WwW..ttttxxxx
 xxxxxxxxxttttWW-.tttxxxxxx
 xxxxxxxxxxtttttttttxxxxxxx
@@ -3176,7 +3197,7 @@ KITEM:   & = |, earthy gem
 KFEAT:   R = deep_water
 KFEAT:   s = closed_clear_door
 # Thin out elephant/dire elephant bands of central necromancers a bit.
-SUBST:   2 = 222.., 5 = 555..
+SUBST:   2 = 2., 5 = 5.
 # DE/FH/JK will always have a monster set, with one a guaranteed necromancer
 # plus band, next a 50% chance to be a # necromancer band, 50% chance to be
 # derived undead band, last guaranteed derived undead band. Necromancer band is
@@ -3230,7 +3251,7 @@ ORIENT:  southeast
 WEIGHT:  5
 MONS:    rime drake, hydra w:15 / dire elephant, arcanist / occultist
 MONS:    red devil / ice devil w:15 / orange demon w:15
-MONS:    hellwing / smoke demon, sun demon / sixfirhy / hell beast w:4
+MONS:    hellwing / smoke demon, sun demon / sixfirhy / sin beast w:4
 KMONS:   hH = hell hound
 KMONS:   F = fungus
 KITEM:   A = superb_item no_pickup, any good_item no_pickup \
@@ -3250,9 +3271,9 @@ FTILE:   "_A456H = floor_cage
 COLOUR:  "456H = red
 COLOUR:  g = warp
 TILE:    g = dimensional_conduit
-TILE:    b = bedeviled_crystal_gehenna
+TILE:    b = bedevilled_crystal_gehenna
 : set_feature_name("metal_statue", "dimensional conduit")
-: set_feature_name("crystal_wall", "bedeviled crystal wall")
+: set_feature_name("crystal_wall", "bedevilled crystal wall")
 MAP
   ...TTTT....  .............................
  ..TttttttT.......Tt.TtT....TT..TT......Tt....
@@ -3352,7 +3373,8 @@ KITEM:  * = gold no_pickup, star_item no_pickup, star_item no_pickup
 KITEM:  | = gold no_pickup, superb_item no_pickup, star_item no_pickup
 KITEM:  $ = gold no_pickup, star_item no_pickup
 KITEM:  R = earthy gem
-SUBST:  T : T:20 .:1 t:1, T = tt..., E = t_
+KFEAT:  C = cache of fruit
+SUBST:  T : T:20 .:1 t:1, T = tt..., E = t_, C = C..
 CLEAR:  _
 NSUBST: . = 5:1 / 3 = 10 / 3:3 / 3 = 3.. / *:.
 NSUBST: 2 = 8:2 / 18 = 2. / *:., 4 = 6:4 / 6 = 4. / *:.
@@ -3365,7 +3387,7 @@ tttttttttT*G*Ttttttt....ttttttttt.....ttTTtttttTT
 ttttttttt4.*.9TTT....Tt.5..TTT....ttT.2222TTtt..@
 tttttttTT.4R4....TTttttttT..4...TttttttTT222..ttT
 tttttT.....9..4TtttttttttT4...4ttttttttt22ttttttt
-ttttT..ttT4.4.Tttttttt..T....4.tttttttt..tttttttE
+ttttT..ttT4C4.Tttttttt..T....4.tttttttt..tttttttE
 tttt.ttttttttttttttttt......tt..TttT...TT.tttttt
 tttT2tttttttttttttttttT....ttttt.....ttttT.Tttt
 ttT22tttT.9TtttttttT....tTTttttttTTttttttt..ttE
@@ -3377,7 +3399,7 @@ tt..tttttTT..222Ttttttttttttt22ttTTTTtt..TtttE
 ttT.tttt.....TTT222TttttttttttT...TT...TttttE
 ttt..tt...TTttttttt..TTttttttttT..4...Tttttt
 tttT....TtttttttttttT@   EEttttt49.49ttttttE
-ttttT..tttttttttttttE      EEttttT.$TttttE
+ttttT..tttttttttttttE      EEttttTC$TttttE
 ttttT..TtttttttttttE          ttttttttt
 ttttt...ttttttttttE            ttttttt
 tttttT..TttttttE                 EEE
@@ -3406,7 +3428,7 @@ KMONS:  P = plant perm_ench:petrified dbname:petrified_plant \
             col:lightgrey tile:mons_withered_plant
 SUBST:  P = P.
 NSUBST: 0 = 3:1 / 1:2 / * = 1112
-NSUBST: 9 = 1:C / 2:2 / 2:3 / * = 11222
+NSUBST: 9 = 1:C / 2:2 / 3:3 / * = 11222
 COLOUR: d|*$4c-R = lightgrey
 FTILE:  d|*$4c-R = floor_cobble_blood
 MAP
@@ -3421,7 +3443,7 @@ xxxxxxxxcc-ccxP.9.0.x...xxxxxxxxxxx
 xxxxxxxxxc-cxx.0.9.xxxP..xxxxPP.%xxxx
 xxxxxxxxxc-cxxP...xxxxx...xxxx0.9xxxx
 xxxxxxxxxx.cxxxx..xxxxxxx...xx.1.0xxx
-xxxxxxxxxx.xxxxxx...xxxxxxx......xxxx
+xxxxxxxxxx.xxxxxx...xxxxxxx.....9xxxx
 xxxxxxxxxx.xxxxxxxx..xxxxxx...xxPPxxx
 xxxxxxx.....xxxxxxx..Pxxxx..xxxxxxxxxx
 xxxxxx90.x..xxxxxxP..xxxx..xxxxcccxxxx
@@ -3432,7 +3454,7 @@ xxxxxxxxx.....xx..xxxxxxP..c------ccx
 xxxxxxxxP.G.G.....xxxxxxx..---cc--cxx
 xxx%xxx..G.P9.G.xxxxxxxxxxx-ccc---cxx
 x%P9Pxx..9..G....xxxxxxxxxxxxc---ccxx
-xx0..1....P..G..PPxxxxxxPPxxx...xxxx
+xx0..1....P0.G..PPxxxxxxPPxxx...xxxx
 xxxP1...xxxP..PxxxxxxxxxxP9....xxxxx
 xxxxxPPxxxxxxxxxxxxxxxxxxx......xxx
 xxxxxxxxxxxxxxxxxxxxxxxx......G...
@@ -3461,16 +3483,14 @@ MONS:    deep troll shaman, dire elephant / hydra / lindwurm
 MONS:    catoblepas, death yak band
 MONS:    elephant, wolf, black bear / polar bear
 KMONS:   P = plant / fungus w:2 / bush w:1
+ITEM:    human skeleton / orc skeleton / elf skeleton / dwarf skeleton /\
+         ogre skeleton w:1 / naga skeleton w:1 / minotaur skeleton w:1 /\
+         merfolk skeleton w:1
 KITEM:   R = earthy gem
 SHUFFLE: 567
 SUBST:   C = cx.., P = P .:9 t:1
 NSUBST:  % = 2:| / 3:* / *:%
-NSUBST:  5 = 2:5 / 3 = 5. / *:.
-NSUBST:  6 = 3:6 / 4 = 6. / *:.
-NSUBST:  7 = 1:7 / 2 = 7. / *:.
-ITEM:    human skeleton / orc skeleton / elf skeleton / dwarf skeleton /\
-         ogre skeleton w:1 / naga skeleton w:1 / minotaur skeleton w:1 /\
-         merfolk skeleton w:1
+NSUBST:  5 = 3:5 / 3 = 5. / *:., 6 = 3:6 / 4 = 6. / *:., 7 = 2:7 / 2 = 7. / *:.
 MAP
                 xxxxxxxxxxxxxx
           xxxxxxx5P.Pxxxxxxxxx
@@ -3579,6 +3599,9 @@ ENDMAP
 ###############################################################################
 # A mini-volcano! No fire clouds and twice as many enemies, though.
 #
+# XXX: Other ends and earlier vaults already allow encountering a fire dragon
+#      without a runed door, but this would be a bit meaner than those others
+#      due to the glass and an inability to use regular doors. What to do...?
 NAME:    cheibrodos_lair_end_hotspot
 TAGS:    no_item_gen no_monster_gen
 PLACE:   Lair:$
@@ -3651,10 +3674,12 @@ ENDMAP
 NAME:    hellmonk_lair_end_abyssal_woods
 PLACE:   Lair:$
 ORIENT:  northwest
-MONS:    blink frog / basilisk w:3, small abomination
+MONS:    blink frog / basilisk w:3, small abomination / brain worm w:2
 MONS:    shapeshifter / chaos spawn / smoke demon / ynoxinul
-MONS:    raiju, ugly thing / large abomination, thrashing horror
+MONS:    raiju, ugly thing, thrashing horror / large abomination w:5
 KMONS:   7 = spriggan ; rapier ego:distortion
+KITEM:   O = spriggan skeleton / wolf skeleton w:3 /\
+             polar bear skeleton w:2 / black bear skeleton w:2
 KITEM:   R = earthy gem, %
 KFEAT:   u = demonic_tree
 KFEAT:   N = enter_abyss
@@ -3663,18 +3688,32 @@ SUBST:   " = '.
 COLOUR:  '%M = magenta
 FTILE:   '%MN_u = floor_nerves_magenta
 NSUBST:  %d = 1:R / 2:| / 3:* / *:%
-NSUBST:  1 = 5=1 / 1.., 2 = 4=2 / 2..
-NSUBST:  4 = 4 / 3, ' = 2:6 / 2 = 56 / 3:O / 5 = 5543O. / .
+NSUBST:  1 = 5:1 / 1.., 2 = 3:2 / 2:. / * = 2..
+NSUBST:  4 = 4 / *:3, ' = 2:6 / 2 = 56 / 3:O / 5 = 5543O. / *:.
 SUBST:   7M = 7O
-# 33% chance for an additional opening at the south.
+# 33% chance each for additional openings at the south or north east.
 SHUFFLE: yzD / JKL / JKL
 SUBST:   y = @, zD= ., JK = t, L = p
-# 33% chance for an additional opening at the north east.
 SHUFFLE: EFH / JKL / JKL
 SUBST:   E = @, FH= ., JK = t, L = p
 SUBST:   a = tt..., q = pp..., p = tttu, s = rr..., r = tu
-KITEM:   O = spriggan skeleton / wolf skeleton w:3 /\
-             polar bear skeleton w:2 / black bear skeleton w:2
+{{
+  local cols = {"dngn_demonic_tree_1 / dngn_demonic_tree_16",
+                "dngn_demonic_tree_2 / dngn_demonic_tree_3",
+                "dngn_demonic_tree_4 / dngn_demonic_tree_5",
+                "dngn_demonic_tree_6 / dngn_demonic_tree_7",
+                "dngn_demonic_tree_8 / dngn_demonic_tree_9",
+                "dngn_demonic_tree_10 / dngn_demonic_tree_11",
+                "dngn_demonic_tree_12 / dngn_demonic_tree_13",
+                "dngn_demonic_tree_14 / dngn_demonic_tree_15",}
+  local col1 = util.random_from(cols)
+  local col2 = col1
+  while col2 == col1 do
+    col2 = util.random_from(cols)
+  end
+
+  tile("u = " .. col1 .. " / " .. col2)
+}}
 MAP
 ttttttttttttttttttttttttttttttttttttttttttttttttttt
 tttttttttttttttttttttttttttttttpppppppppppttpppptt

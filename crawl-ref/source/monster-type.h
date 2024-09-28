@@ -21,6 +21,7 @@ enum monster_type                      // env.mons[].type
     MONS_BAT,
     MONS_FIRE_BAT,
 #if TAG_MAJOR_VERSION > 34
+    MONS_OBSIDIAN_BAT,
     MONS_SNAKE,                // genus
 #endif
     MONS_BALL_PYTHON,
@@ -155,7 +156,7 @@ enum monster_type                      // env.mons[].type
     MONS_GIANT_AMOEBA,
 #else
     MONS_ROCKSLIME,
-    MONS_QUICKSILVER_OOZE,
+    MONS_VOID_OOZE,
 #endif
     MONS_AZURE_JELLY,
 #if TAG_MAJOR_VERSION == 34
@@ -286,7 +287,7 @@ enum monster_type                      // env.mons[].type
     MONS_DEMONSPAWN_BLOOD_SAINT,
     MONS_DEMONSPAWN_WARMONGER,
     MONS_DEMONSPAWN_CORRUPTER,
-    MONS_DEMONSPAWN_BLACK_SUN,
+    MONS_DEMONSPAWN_SOUL_SCHOLAR,
 #endif
     MONS_GARGOYLE,
     MONS_WAR_GARGOYLE,
@@ -328,6 +329,7 @@ enum monster_type                      // env.mons[].type
     MONS_IRON_ELEMENTAL,
     MONS_QUICKSILVER_ELEMENTAL,
     MONS_ELEMENTAL_WELLSPRING,
+    MONS_SHADOW_PUPPET,
 #endif
     MONS_TWISTER,        // air miscasts
     MONS_GOLDEN_EYE,
@@ -335,6 +337,7 @@ enum monster_type                      // env.mons[].type
     MONS_SPATIAL_VORTEX,
     MONS_INSUBSTANTIAL_WISP,
 #if TAG_MAJOR_VERSION > 34
+    MONS_THERMIC_DYNAMO,
     MONS_WILL_O_THE_WISP,
 #else
     MONS_VAPOUR,
@@ -362,7 +365,7 @@ enum monster_type                      // env.mons[].type
     MONS_OKLOB_SAPLING,
     MONS_OKLOB_PLANT,
     MONS_BUSH,
-    MONS_BURNING_BUSH,
+    MONS_SCRUB_NETTLE,
 #if TAG_MAJOR_VERSION > 34
     MONS_THORN_HUNTER,
     MONS_BRIAR_PATCH,
@@ -371,6 +374,7 @@ enum monster_type                      // env.mons[].type
     MONS_ANIMATED_TREE,
     MONS_DEMONIC_PLANT,
     MONS_WITHERED_PLANT,
+    MONS_SACRED_LOTUS,
     MONS_STARFLOWER,
 #endif
     MONS_BALLISTOMYCETE_SPORE,
@@ -399,6 +403,9 @@ enum monster_type                      // env.mons[].type
     MONS_ORC_KNIGHT,
     MONS_ORC_SORCERER,
     MONS_ORC_WARLORD,
+#if TAG_MAJOR_VERSION > 34
+    MONS_ORC_APOSTLE,
+#endif
     MONS_DWARF,
     MONS_DEEP_DWARF,
 #if TAG_MAJOR_VERSION == 34
@@ -551,6 +558,8 @@ enum monster_type                      // env.mons[].type
     MONS_HALAZID_WARLOCK,
     MONS_SPECTATOR,
     MONS_METEORAN,
+    MONS_POLTERGUARDIAN,
+    MONS_UNDYING_ARMOURY,
 #endif
     MONS_KILLER_KLOWN,
     MONS_SHAPESHIFTER,
@@ -635,6 +644,8 @@ enum monster_type                      // env.mons[].type
     MONS_LIGHTNING_SPIRE,
 #if TAG_MAJOR_VERSION > 34
     MONS_DIAMOND_OBELISK,
+    MONS_HOARFROST_CANNON,
+    MONS_HELLFIRE_MORTAR,
 #endif
 
     // Demons:
@@ -660,7 +671,9 @@ enum monster_type                      // env.mons[].type
     MONS_YNOXINUL,
     MONS_CHAOS_SPAWN,
     MONS_HELLION,
+#if TAG_MAJOR_VERSION == 34
     MONS_LOROCYPROCA,
+#endif
     MONS_TORMENTOR,
     MONS_REAPER,
     MONS_SOUL_EATER,
@@ -668,7 +681,7 @@ enum monster_type                      // env.mons[].type
 #if TAG_MAJOR_VERSION == 34
     MONS_BLUE_DEVIL,
 #endif
-    MONS_HELL_BEAST,
+    MONS_SIN_BEAST,
     MONS_RUST_DEVIL,
     MONS_EXECUTIONER,
     MONS_GREEN_DEATH,
@@ -692,6 +705,7 @@ enum monster_type                      // env.mons[].type
 #if TAG_MAJOR_VERSION == 34
     MONS_RAKSHASA_FAKE,
 #else
+    MONS_NEKOMATA,
     MONS_DRYAD,
     MONS_ELEIONOMA,
     MONS_WENDIGO,
@@ -742,6 +756,7 @@ enum monster_type                      // env.mons[].type
     MONS_FLAMING_CORPSE,
 #else
     MONS_BLOATED_HUSK,
+    MONS_MARROWCUDA,
 #endif
     MONS_MUMMY,
     MONS_BOG_BODY,
@@ -753,7 +768,7 @@ enum monster_type                      // env.mons[].type
     MONS_VAMPIRE_MAGE,
     MONS_GHOST,                 // common genus for monster and player ghosts
     MONS_PHANTOM,
-    MONS_SHADOW,
+    MONS_SHADOWGHAST,
 #if TAG_MAJOR_VERSION == 34
     MONS_HUNGRY_GHOST,
 #endif
@@ -784,6 +799,7 @@ enum monster_type                      // env.mons[].type
     MONS_ANTIQUE_CHAMPION,
     MONS_REVENANT,
     MONS_LOST_SOUL,
+    MONS_SOUL_WISP,
     MONS_MARTYRED_SHADE,
     MONS_JIANGSHI,
     MONS_SEARING_WRETCH,
@@ -806,6 +822,9 @@ enum monster_type                      // env.mons[].type
     MONS_ANGEL,
     MONS_DAEVA,
     MONS_CHERUB,
+#if TAG_MAJOR_VERSION > 34
+    MONS_FRAVASHI,
+#endif
     MONS_SERAPH,
 #if TAG_MAJOR_VERSION == 34
     MONS_PHOENIX,
@@ -827,7 +846,7 @@ enum monster_type                      // env.mons[].type
     MONS_ANTAEUS,
     MONS_ERESHKIGAL,
     MONS_ROYAL_JELLY,
-    MONS_THE_ENCHANTRESS,
+    MONS_ENCHANTRESS,
     // the four Pan lords, order must match runes
     MONS_MNOLEG,
     MONS_LOM_LOBON,
@@ -844,7 +863,7 @@ enum monster_type                      // env.mons[].type
     MONS_JESSICA,
     MONS_SIGMUND,
     MONS_TERENCE,
-    MONS_BLORK_THE_ORC,
+    MONS_BLORKULA_THE_ORCULA,
     MONS_EDMUND,
     MONS_PSYCHE,
     MONS_EROLCHA,
@@ -862,9 +881,7 @@ enum monster_type                      // env.mons[].type
     MONS_LOUISE,
     MONS_FRANCES,
     MONS_RUPERT,
-#if TAG_MAJOR_VERSION == 34
     MONS_WIGLAF,
-#endif
     MONS_XTAHUA,
     MONS_NORRIS,
     MONS_FREDERICK,
@@ -930,6 +947,7 @@ enum monster_type                      // env.mons[].type
     MONS_ZENATA,
     MONS_GRUNN,
     MONS_JEREMIAH,
+    MONS_XAKKRIXIS,
 #endif
     // Sprint uniques:
     MONS_CHUCK,
@@ -948,14 +966,18 @@ enum monster_type                      // env.mons[].type
     MONS_ORB_OF_DESTRUCTION,    // a projectile, not a real mon
 #if TAG_MAJOR_VERSION > 34
     MONS_FULMINANT_PRISM,
+    MONS_SHADOW_PRISM,
     MONS_BATTLESPHERE,
     MONS_FOXFIRE,
     MONS_BOULDER,
     MONS_BLAZEHEART_CORE,
+    MONS_GLOBE_OF_ANNIHILATION,
+    MONS_PILE_OF_DEBRIS,
 #endif
     MONS_PILLAR_OF_SALT,
 #if TAG_MAJOR_VERSION > 34
     MONS_BLOCK_OF_ICE,
+    MONS_PILLAR_OF_RIME,
 #endif
     MONS_HELL_LORD,             // genus
     MONS_MERGED_SLIME_CREATURE, // used only for recolouring
@@ -967,7 +989,7 @@ enum monster_type                      // env.mons[].type
     MONS_SENSED_FRIENDLY,
     MONS_PLAYER,                // a certain ugly creature
 #if TAG_MAJOR_VERSION > 34
-    MONS_PLAYER_SHADOW,         // Dithmenos / god wrath
+    MONS_PLAYER_SHADOW,         // Dithmenos
     MONS_ANCESTOR,              // Hepliaklqana
     MONS_ANCESTOR_KNIGHT,
     MONS_ANCESTOR_BATTLEMAGE,
@@ -978,6 +1000,7 @@ enum monster_type                      // env.mons[].type
     MONS_TEST_STATUE,
     MONS_TEST_BLOB,
     MONS_NAMELESS,              // summoning miscast
+    MONS_GOD_WRATH_AVATAR,      // some god wrath effects
 #endif
 
     // Add new monsters here:
@@ -1009,7 +1032,7 @@ enum monster_type                      // env.mons[].type
 
     MONS_GIANT_LIZARD,          // genus
     MONS_DRAKE,                 // genus
-    MONS_PLAYER_SHADOW,         // Dithmenos / god wrath
+    MONS_PLAYER_SHADOW,         // Dithmenos
 
     MONS_DEEP_TROLL_EARTH_MAGE,
     MONS_DEEP_TROLL_SHAMAN,
@@ -1083,7 +1106,7 @@ enum monster_type                      // env.mons[].type
     MONS_CHAOS_CHAMPION,        // removed
     MONS_DEMONSPAWN_WARMONGER,
     MONS_DEMONSPAWN_CORRUPTER,
-    MONS_DEMONSPAWN_BLACK_SUN,
+    MONS_DEMONSPAWN_SOUL_SCHOLAR,
 
     MONS_WORLDBINDER,
     MONS_GRAND_AVATAR,
@@ -1168,7 +1191,7 @@ enum monster_type                      // env.mons[].type
     MONS_DEEP_ELF_AIR_MAGE,
     MONS_ANIMATED_ARMOUR,
     MONS_ROCKSLIME,
-    MONS_QUICKSILVER_OOZE,
+    MONS_VOID_OOZE,
     MONS_IRONBOUND_FROSTHEART,
     MONS_IRONBOUND_THUNDERHULK,
     MONS_IRONBOUND_BEASTMASTER,
@@ -1231,6 +1254,28 @@ enum monster_type                      // env.mons[].type
     MONS_BURIAL_ACOLYTE,
     MONS_BLAZEHEART_CORE,
     MONS_MARTYRED_SHADE,
+    MONS_ORC_APOSTLE,
+    MONS_SACRED_LOTUS,
+    MONS_THERMIC_DYNAMO,
+    MONS_OBSIDIAN_BAT,
+    MONS_PILE_OF_DEBRIS,
+    MONS_PILLAR_OF_RIME,
+    MONS_HOARFROST_CANNON,
+#if TAG_MAJOR_VERSION == 34
+    MONS_ELECTROFERRIC_VORTEX,
+#endif
+    MONS_POLTERGUARDIAN,
+    MONS_MARROWCUDA,
+    MONS_UNDYING_ARMOURY,
+    MONS_XAKKRIXIS,
+    MONS_HELLFIRE_MORTAR,
+    MONS_GOD_WRATH_AVATAR,      // Used as a source for some god wrath effects
+    MONS_SHADOW_PUPPET,
+    MONS_SHADOW_PRISM,
+    MONS_SOUL_WISP,
+    MONS_GLOBE_OF_ANNIHILATION,
+    MONS_FRAVASHI,
+    MONS_NEKOMATA,
 #endif
 
     NUM_MONSTERS,               // used for polymorph

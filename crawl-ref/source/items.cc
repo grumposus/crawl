@@ -28,6 +28,7 @@
 #include "coord.h"
 #include "coordit.h"
 #include "corpse.h"
+#include "database.h" // getRandNameString
 #include "dbg-util.h"
 #include "defines.h"
 #include "delay.h"
@@ -387,7 +388,7 @@ bool dec_inv_item_quantity(int obj, int amount)
             {
                 if (i == EQ_WEAPON)
                 {
-                    unwield_item();
+                    unwield_item(*you.weapon());
                     canned_msg(MSG_EMPTY_HANDED_NOW);
                 }
                 you.equip[i] = -1;
@@ -796,14 +797,11 @@ bool item_is_worth_listing(const item_def& item)
     }
 }
 
-// 2 - artefact, 1 - glowing/runed, 0 - mundane
+// 3 - unrandart, 2 - artefact, 1 - glowing/runed, 0 - mundane
 static int _item_name_specialness(const item_def& item)
 {
-    if (item.base_type != OBJ_WEAPONS && item.base_type != OBJ_ARMOUR
-        && item.base_type != OBJ_MISSILES && item.base_type != OBJ_JEWELLERY)
-    {
-        return 0;
-    }
+    if (is_unrandom_artefact(item) || is_xp_evoker(item))
+        return 3;
 
     // You can tell something is an artefact, because it'll have a
     // description which rules out anything else.
@@ -857,6 +855,7 @@ string item_message(vector<const item_def *> const &items)
                     out_string += "</" + colour + ">";
                 switch (specialness)
                 {
+                case 3: colour = "lightcyan"; break; // unrandart
                 case 2: colour = "yellow";   break; // artefact
                 case 1: colour = "white";    break; // glowing/runed
                 case 0: colour = "darkgrey"; break; // mundane
@@ -1008,7 +1007,6 @@ void id_floor_items()
 void pickup_menu(int item_link)
 {
     int n_did_pickup   = 0;
-    int n_tried_pickup = 0;
 
     // XX why is this const?
     auto items = const_item_list_on_square(item_link);
@@ -1049,14 +1047,12 @@ void pickup_menu(int item_link)
                 // floor.
                 if (!move_item_to_inv(j, num_to_take))
                 {
-                    n_tried_pickup++;
                     pickup_warning = "You can't carry that many items.";
                     if (env.item[j].defined())
                         env.item[j].flags = oldflags;
                 }
                 else
                 {
-                    n_did_pickup++;
                     // If we deliberately chose to take only part of a
                     // pile, we consider the rest to have been
                     // "dropped."
@@ -1137,7 +1133,7 @@ static string _milestone_collectible(const item_def &item)
     return string("found ") + item.name(DESC_A) + ".";
 }
 
-static void _milestone_check(const item_def &item)
+void milestone_check(const item_def &item)
 {
     if (item.base_type == OBJ_RUNES)
         mark_milestone("rune", _milestone_collectible(item));
@@ -1163,7 +1159,7 @@ static void _check_note_item(item_def &item)
         // further notes.
         if (fully_identified(item))
             item.flags |= ISFLAG_NOTED_ID;
-        _milestone_check(item);
+        milestone_check(item);
     }
 }
 
@@ -1292,6 +1288,9 @@ string origin_desc(const item_def &item)
                 break;
             case AQ_SCROLL:
                 desc += "You acquired " + _article_it(item) + " ";
+                break;
+            case AQ_INVENTED:
+                desc += "You invented it yourself ";
                 break;
 #if TAG_MAJOR_VERSION == 34
             case AQ_CARD_GENIE:
@@ -1758,10 +1757,10 @@ static bool _put_item_in_inv(item_def& it, int quant_got, bool quiet, bool& put_
 // Currently only used for moving shop items into inventory, since they are
 // not in env.item. This doesn't work with partial pickup, because that requires
 // an env.item slot...
-bool move_item_to_inv(item_def& item)
+bool move_item_to_inv(item_def& item, bool quiet)
 {
     bool junk;
-    return _put_item_in_inv(item, item.quantity, false, junk);
+    return _put_item_in_inv(item, item.quantity, quiet, junk);
 }
 
 /**
@@ -1814,8 +1813,6 @@ static void _get_book(item_def& it)
             return;
         }
         mprf("You pick up %s and begin reading...", it.name(DESC_A).c_str());
-        if (is_artefact(it) && !item_ident(it, ISFLAG_KNOW_PROPERTIES))
-            mprf("It was %s.", it.name(DESC_A, false, true).c_str());
 
         if (!library_add_spells(spells_in_book(it)))
             mpr("Unfortunately, you learned nothing new.");
@@ -1901,7 +1898,7 @@ static void _get_rune(const item_def& it, bool quiet)
         else if (nrunes > 1)
         {
             if (player_in_branch(BRANCH_PANDEMONIUM) && _got_all_pan_runes())
-                mprf("You've emptied out Pandemonium! Nothing left here but demons.");
+                mpr("You've emptied out Pandemonium! Nothing left here but demons.");
             mprf("You now have %d runes.", nrunes);
         }
 
@@ -1910,6 +1907,31 @@ static void _get_rune(const item_def& it, bool quiet)
 
     if (it.sub_type == RUNE_ABYSSAL)
         mpr("You feel the abyssal rune guiding you out of this place.");
+}
+
+static bool _is_disabled_gem(gem_type gem)
+{
+    switch (gem)
+    {
+#if TAG_MAJOR_VERSION == 34
+    case GEM_ORC:
+        return true;
+#endif
+    default:
+        return false;
+    }
+}
+
+static bool _got_all_gems()
+{
+    for (int gem = GEM_DUNGEON; gem < NUM_GEM_TYPES; ++gem)
+    {
+        if (_is_disabled_gem(static_cast<gem_type>(gem)))
+            continue;
+        if (!you.gems_found[static_cast<gem_type>(gem)])
+            return false;
+    }
+    return true;
 }
 
 static void _get_gem(const item_def& it, bool quiet)
@@ -1922,6 +1944,11 @@ static void _get_gem(const item_def& it, bool quiet)
     // XXX: consider customizing this message per-gem
     mprf("You pick up %s and feel its impossibly delicate weight in your %s.",
          it.name(DESC_THE).c_str(), you.hand_name(true).c_str());
+    if (_got_all_gems())
+    {
+        mprf("You've found all the gems! Together, they sparkle an otherworldly %s!",
+             getSpeakString("misc_colour").c_str());
+    }
     mpr("Press } and ! to see all the gems you have collected.");
     print_gem_warnings(it.sub_type, 0);
 }
@@ -2544,6 +2571,12 @@ bool drop_item(int item_dropped, int quant_drop)
     if (!_check_dangerous_drop(item))
         return false;
 
+    if (item_dropped == you.equip[EQ_GIZMO])
+    {
+        mpr("That is permanently installed in your exoskeleton.");
+        return false;
+    }
+
     if (item_dropped == you.equip[EQ_LEFT_RING]
      || item_dropped == you.equip[EQ_RIGHT_RING]
      || item_dropped == you.equip[EQ_AMULET]
@@ -2578,6 +2611,22 @@ bool drop_item(int item_dropped, int quant_drop)
         return false;
     }
 
+    if (you.has_mutation(MUT_SLOW_WIELD)
+        && is_weapon(item)
+        && (you.equip[EQ_WEAPON] == item_dropped
+            || you.equip[EQ_OFFHAND] == item_dropped))
+    {
+        if (!Options.easy_unequip)
+        {
+            mpr("You will have to unwield that first.");
+            return false;
+        }
+        if (!unwield_weapon(item))
+            return false;
+        start_delay<DropItemDelay>(1, item);
+        return true;
+    }
+
     for (int i = EQ_MIN_ARMOUR; i <= EQ_MAX_ARMOUR; i++)
     {
         if (item_dropped == you.equip[i] && you.equip[i] != -1)
@@ -2606,7 +2655,10 @@ bool drop_item(int item_dropped, int quant_drop)
     // like temporary brands. -- bwr
     if (item_dropped == you.equip[EQ_WEAPON] && quant_drop >= item.quantity)
     {
-        if (!wield_weapon(SLOT_BARE_HANDS, false))
+        // Dropping a held weapon is not faster than dropping other items.
+        // Though I suppose it'd be fine if it was, really.
+        unwind_var<int> reset_speed(you.time_taken, you.time_taken);
+        if (!wield_weapon(SLOT_BARE_HANDS))
             return false;
         // May have been destroyed by removal. Returning true because we took
         // time to swap away.
@@ -2615,6 +2667,9 @@ bool drop_item(int item_dropped, int quant_drop)
     }
 
     ASSERT(item.defined());
+
+    if (Options.drop_disables_autopickup && item.base_type != OBJ_MISSILES)
+        set_item_autopickup(item, AP_FORCE_OFF);
 
     if (copy_item_to_grid(item, you.pos(), quant_drop, true, true) == NON_ITEM)
     {
@@ -3331,6 +3386,7 @@ int get_max_subtype(object_class_type base_type)
         NUM_RUNE_TYPES,
         NUM_TALISMANS,
         NUM_GEM_TYPES,
+        1,
     };
     COMPILE_CHECK(ARRAYSZ(max_subtype) == NUM_OBJECT_CLASSES);
 
@@ -3507,6 +3563,7 @@ colour_t item_def::missile_colour() const
         case MI_ARROW:         // removed as an item, but don't crash
         case MI_BOLT:          // removed as an item, but don't crash
         case MI_SLING_BULLET:  // removed as an item, but don't crash
+        case MI_SLUG:          // never existed as an item
         case MI_DART:
             return WHITE;
         case MI_JAVELIN:
@@ -3956,6 +4013,8 @@ colour_t item_def::miscellany_colour() const
             return LIGHTRED;
         case MISC_SACK_OF_SPIDERS:
             return WHITE;
+        case MISC_GRAVITAMBOURINE:
+            return LIGHTMAGENTA;
 #if TAG_MAJOR_VERSION == 34
         case MISC_LAMP_OF_FIRE:
             return YELLOW;
@@ -4142,13 +4201,13 @@ bool item_def::is_valid(bool iinfo, bool error) const
     return true;
 }
 
-// The Orb of Zot and unique runes are considered critical.
+// The Orb of Zot, gems, and unique runes are considered critical.
 bool item_def::is_critical() const
 {
     if (!defined())
         return false;
 
-    if (base_type == OBJ_ORBS)
+    if (base_type == OBJ_ORBS || base_type == OBJ_GEMS)
         return true;
 
     return item_is_unique_rune(*this);
@@ -4584,7 +4643,7 @@ item_def get_item_known_info(const item_def& item)
     ii.flags = item.flags & (0
             | ISFLAG_IDENT_MASK
             | ISFLAG_ARTEFACT_MASK | ISFLAG_DROPPED | ISFLAG_THROWN
-            | ISFLAG_COSMETIC_MASK);
+            | ISFLAG_COSMETIC_MASK | ISFLAG_CURSED | ISFLAG_CHAOTIC);
 
     if (in_inventory(item))
     {
@@ -4884,4 +4943,89 @@ bool maybe_identify_base_type(item_def &item)
 
     _identify_last_item(item);
     return true;
+}
+
+void name_weapon(item_def &item)
+{
+    string name = getRandMonNameString("steelspirit");
+    if (name == "RANDGEN")
+        name = make_name();
+    item.props[WEAPON_NAME_KEY] = name;
+
+    if (!item.inscription.empty())
+        item.inscription += ", ";
+    item.inscription += name;
+}
+
+string get_weapon_name(const item_def &item, bool full_name)
+{
+    const string it_name = item.name(DESC_YOUR, false, false, false);
+
+    // Artefacts have names already.
+    if (is_artefact(item))
+        return it_name;
+
+    ASSERT(item.props.exists(WEAPON_NAME_KEY));
+
+    const string name = item.props[WEAPON_NAME_KEY].get_string();
+
+    // For non-artefacts, get the names we gave them.
+    if (!full_name)
+        return name;
+
+    return it_name + " \"" + name + "\"";
+}
+
+void maybe_name_weapon(item_def &item, bool silent)
+{
+    const bool has_own_name = is_artefact(item);
+    const bool new_name = has_own_name
+                          || !item.props.exists(WEAPON_NAME_KEY);
+
+    if (new_name && !has_own_name)
+        name_weapon(item);
+
+    if (silent)
+        return;
+
+    string full_name = get_weapon_name(item, true);
+
+    // TODO: variant messages? (in the database?)
+    mprf("You welcome %s%s into your grasp.", full_name.c_str(),
+         new_name ? "" : " back");
+}
+
+void say_farewell_to_weapon(const item_def &item)
+{
+    string name = get_weapon_name(item, false);
+
+    // TODO: variant messages? (in the database?)
+    mprf("You whisper farewell to %s.", name.c_str());
+}
+
+// If there are more than one net on this square
+// split off one of them for checking/setting values.
+void maybe_split_nets(item_def &item, const coord_def& where)
+{
+    if (item.quantity == 1)
+    {
+        set_net_stationary(item);
+        return;
+    }
+
+    item_def it;
+
+    it.base_type = item.base_type;
+    it.sub_type  = item.sub_type;
+    it.net_durability      = item.net_durability;
+    it.net_placed  = item.net_placed;
+    it.flags     = item.flags;
+    it.special   = item.special;
+    it.quantity  = --item.quantity;
+    item_colour(it);
+
+    item.quantity = 1;
+    set_net_stationary(item);
+
+    copy_item_to_grid(it, where);
 }

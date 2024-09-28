@@ -131,7 +131,8 @@ bool trap_def::is_bad_for_player() const
     return type == TRAP_ALARM
            || type == TRAP_DISPERSAL
            || type == TRAP_ZOT
-           || type == TRAP_NET;
+           || type == TRAP_NET
+           || type == TRAP_PLATE;
 }
 
 bool trap_def::is_safe(actor* act) const
@@ -210,33 +211,6 @@ const char* held_status(actor *act)
         return "caught in a web";
 }
 
-// If there are more than one net on this square
-// split off one of them for checking/setting values.
-static void _maybe_split_nets(item_def &item, const coord_def& where)
-{
-    if (item.quantity == 1)
-    {
-        set_net_stationary(item);
-        return;
-    }
-
-    item_def it;
-
-    it.base_type = item.base_type;
-    it.sub_type  = item.sub_type;
-    it.net_durability      = item.net_durability;
-    it.net_placed  = item.net_placed;
-    it.flags     = item.flags;
-    it.special   = item.special;
-    it.quantity  = --item.quantity;
-    item_colour(it);
-
-    item.quantity = 1;
-    set_net_stationary(item);
-
-    copy_item_to_grid(it, where);
-}
-
 static void _mark_net_trapping(const coord_def& where)
 {
     int net = get_trapping_net(where);
@@ -244,7 +218,7 @@ static void _mark_net_trapping(const coord_def& where)
     {
         net = get_trapping_net(where, false);
         if (net != NON_ITEM)
-            _maybe_split_nets(env.item[net], where);
+            maybe_split_nets(env.item[net], where);
     }
 }
 
@@ -256,7 +230,7 @@ static void _mark_net_trapping(const coord_def& where)
  */
 bool monster_caught_in_net(monster* mon)
 {
-    if (mon->is_insubstantial() || (mons_genus(mon->type) == MONS_JELLY))
+    if (mon->is_insubstantial() || mon->is_amorphous())
     {
         if (you.can_see(*mon))
         {
@@ -320,6 +294,7 @@ bool player_caught_in_net()
     // and we get a glimpse of a web because there isn't a trapping net
     // item yet
     you.attribute[ATTR_HELD] = 1;
+    you.redraw_evasion = true;
 
     stop_delay(true); // even stair delays
     return true;
@@ -328,7 +303,7 @@ bool player_caught_in_net()
 void check_net_will_hold_monster(monster* mons)
 {
     ASSERT(mons); // XXX: should be monster &mons
-    if (mons->is_insubstantial() || (mons_genus(mons->type) == MONS_JELLY))
+    if (mons->is_insubstantial() || mons->is_amorphous())
     {
         const int net = get_trapping_net(mons->pos());
         if (net != NON_ITEM)
@@ -532,7 +507,8 @@ void trap_def::trigger(actor& triggerer)
         if (!you_trigger && you.see_cell_no_trans(pos))
         {
             you.blink();
-            interrupt_activity(activity_interrupt::teleport);
+            if (!you.no_tele(true))
+                interrupt_activity(activity_interrupt::teleport);
         }
         // Don't chain disperse
         triggerer.blink();
@@ -561,7 +537,7 @@ void trap_def::trigger(actor& triggerer)
             break;
         trap_destroyed = true;
         if (you_trigger)
-            mprf("You set off the alarm!");
+            mpr("You set off the alarm!");
         else
             mprf("%s %s the alarm!", triggerer.name(DESC_THE).c_str(),
                  mons_intel(*m) >= I_HUMAN ? "pulls" : "sets off");
@@ -626,7 +602,7 @@ void trap_def::trigger(actor& triggerer)
                 mpr("You trigger the net trap.");
             const string reason = _net_immune_reason();
             if (!reason.empty())
-                mprf("%s", reason.c_str());
+                mpr(reason);
             break;
         }
 
@@ -655,7 +631,7 @@ void trap_def::trigger(actor& triggerer)
             {
                 if (m->is_insubstantial())
                     simple_monster_message(*m, " passes through a web.");
-                else if (mons_genus(m->type) == MONS_JELLY)
+                else if (m->is_amorphous())
                     simple_monster_message(*m, " oozes through a web.");
                 // too spammy for spiders, and expected
             }
@@ -728,6 +704,7 @@ void trap_def::trigger(actor& triggerer)
         {
         // keep this for messaging purposes
         const bool triggerer_seen = you.can_see(triggerer);
+        const bool triggerer_was_invisible_monster = m && m->has_ench(ENCH_INVIS) && !m->friendly();
 
         // Fire away!
         triggerer.do_shaft();
@@ -740,6 +717,15 @@ void trap_def::trigger(actor& triggerer)
                  triggerer_seen ? "The" : "A");
             know_trap_destroyed = true;
             trap_destroyed = true;
+
+            // If we shaft an invisible monster reactivate autopickup.
+            // We need to check for actual invisibility rather than
+            // whether we can see the monster. There are several edge
+            // cases where a monster is visible to the player but we
+            // still need to turn autopickup back on, such as
+            // TSO's halo or sticky flame.
+            if (triggerer_was_invisible_monster)
+                autotoggle_autopickup(false);
         }
         }
         break;
@@ -1018,6 +1004,35 @@ dungeon_feature_type trap_feature(trap_type type)
     }
 }
 
+trap_type trap_type_from_feature(dungeon_feature_type type)
+{
+    switch (type)
+    {
+    case DNGN_TRAP_WEB:
+        return TRAP_WEB;
+    case DNGN_TRAP_SHAFT:
+        return TRAP_SHAFT;
+    case DNGN_TRAP_DISPERSAL:
+        return TRAP_DISPERSAL;
+    case DNGN_TRAP_TELEPORT:
+        return TRAP_TELEPORT;
+    case DNGN_TRAP_TELEPORT_PERMANENT:
+        return TRAP_TELEPORT_PERMANENT;
+    case DNGN_TRAP_ALARM:
+        return TRAP_ALARM;
+    case DNGN_TRAP_ZOT:
+        return TRAP_ZOT;
+    case DNGN_PASSAGE_OF_GOLUBRIA:
+        return TRAP_GOLUBRIA;
+    case DNGN_TRAP_NET:
+        return TRAP_NET;
+    case DNGN_TRAP_PLATE:
+        return TRAP_PLATE;
+    default:
+        return TRAP_UNASSIGNED;
+    }
+}
+
 /***
  * Can a shaft be placed on the current level?
  *
@@ -1147,18 +1162,19 @@ void do_trap_effects()
                 simple_god_message(" reveals an alarm trap just before you would have tripped it.");
                 return;
             }
-            mprf("With a horrendous wail, an alarm goes off!");
+            mpr("With a horrendous wail, an alarm goes off!");
             fake_noisy(40, you.pos());
             you.sentinel_mark(true);
             break;
 
         case TRAP_TELEPORT:
         {
-            string msg = make_stringf("%s and a teleportation trap spontaneously manifests!",
+            string msg = make_stringf("%s and a teleportation trap "
+                                      "spontaneously manifests!",
                                       _malev_msg().c_str());
             if (have_passive(passive_t::avoid_traps))
             {
-                mprf("%s", msg.c_str());
+                mpr(msg);
                 simple_god_message(" warns you in time for you to avoid it.");
                 return;
             }

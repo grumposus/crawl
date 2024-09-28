@@ -110,7 +110,7 @@ static bool _is_noteworthy(const Note& note)
         || note.type == NOTE_XOM_REVIVAL
         || note.type == NOTE_SEEN_FEAT
         || note.type == NOTE_PARALYSIS
-        || note.type == NOTE_NAMED_ALLY
+        || note.type == NOTE_RECRUITED_APOSTLE
         || note.type == NOTE_ALLY_DEATH
         || note.type == NOTE_FEAT_MIMIC
         || note.type == NOTE_OFFERED_SPELL
@@ -120,7 +120,9 @@ static bool _is_noteworthy(const Note& note)
         || note.type == NOTE_DREAMSHARD
         || note.type == NOTE_GEM_LOST
         || note.type == NOTE_GAIN_LIFE
-        || note.type == NOTE_LOSE_LIFE)
+        || note.type == NOTE_LOSE_LIFE
+        || note.type == NOTE_FLED_CHALLENGE
+        || note.type == NOTE_INFERNAL_MARK)
     {
         return true;
     }
@@ -361,8 +363,8 @@ string Note::describe(bool when, bool where, bool what) const
         case NOTE_PARALYSIS:
             result << "Paralysed by " << name << " for " << first << " turns";
             break;
-        case NOTE_NAMED_ALLY:
-            result << "Gained " << name << " as an ally";
+        case NOTE_RECRUITED_APOSTLE:
+            result << "Anointed " << name << " the " << desc << " as your apostle";
             break;
         case NOTE_ALLY_DEATH:
             result << "Your ally " << name << " died";
@@ -406,6 +408,12 @@ string Note::describe(bool when, bool where, bool what) const
             break;
         case NOTE_LOSE_LIFE:
             result << "Lost a life ("   << first << (first == 1 ? " life " : " lives ") << "remaining)";
+            break;
+        case NOTE_FLED_CHALLENGE:
+            result << "Fled from a divine trial";
+            break;
+        case NOTE_INFERNAL_MARK:
+            result << "Branded self with the " << name;
             break;
         default:
             result << "Buggy note description: unknown note type";

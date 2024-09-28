@@ -181,6 +181,36 @@ struct mlc_mapping
     int colour;
 };
 
+#ifdef USE_TILE
+struct colour_remapping
+{
+    colour_remapping()
+        : colour_index(NUM_TERM_COLOURS), colour_def(0, 0, 0)
+    {
+    }
+
+    colour_remapping(int c, VColour col)
+        : colour_index(c), colour_def(col)
+    {
+    }
+
+    colour_remapping(const string &s);
+
+    bool operator== (const colour_remapping &o) const
+    {
+        return colour_index == o.colour_index
+                && colour_def.r == o.colour_def.r
+                && colour_def.g == o.colour_def.g
+                && colour_def.b == o.colour_def.b;
+    }
+
+    bool valid() const { return colour_index >= 0 && colour_index < NUM_TERM_COLOURS; }
+
+    int colour_index;
+    VColour colour_def;
+};
+#endif
+
 struct flang_entry
 {
     flang_t lang_id;
@@ -510,7 +540,10 @@ public:
     use_animations_type use_animations; // which animations to show
     bool        darken_beyond_range; // whether to darken squares out of range
     bool        show_blood; // whether to show blood or not
+    int         food_snacking_frequency; // how often walking on food makes one eat
+    int         fountain_line_frequency; // how often walking on fountains causes commentary
     bool        reduce_animations;   // if true, don't show interim steps for animations
+    bool        drop_disables_autopickup;   // if true, automatically remove drops from autopickup
 
     vector<text_pattern> unusual_monster_items; // which monster items to
                                                 // highlight as unusual
@@ -821,6 +854,8 @@ public:
     VColour     tile_transporter_landing_col;
     VColour     tile_explore_horizon_col;
 
+    vector<colour_remapping> custom_text_colours;
+
     string      tile_display_mode;
 
     bool tile_show_player_species;
@@ -893,6 +928,7 @@ public:
     vector<string> tile_layout_priority;
     monster_type tile_use_monster;
     bool        tile_grinch;
+    vector<string> tile_player_status_icons;
 #ifdef USE_TILE_WEB
     bool        tile_realtime_anim;
     bool        tile_level_map_hide_messages;

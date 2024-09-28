@@ -157,7 +157,6 @@ struct bolt
     bool chose_ray = false;       // do we want a specific ray?
     bool beam_cancelled = false;  // stop_attack_prompt() returned true
     bool dont_stop_player = false; // player answered self target prompt with 'y'
-    bool dont_stop_trees = false; // player answered tree-burning prompt with 'y'
     bool overshoot_prompt = true; // warn when an ally is past the target
     bool friendly_past_target = false; // we fired and found something past the target
 
@@ -169,7 +168,6 @@ struct bolt
     mid_t reflector = MID_NOBODY; // latest thing to reflect beam
 
     bool use_target_as_pos = false; // pos() should return ::target()
-    bool auto_hit = false;
 
     ray_def     ray;             // shoot on this specific ray
 
@@ -254,6 +252,7 @@ private:
     bool is_big_cloud() const; // expands into big_cloud at endpoint
     int range_used_on_hit() const;
     bool bush_immune(const monster &mons) const;
+    bool at_blocking_monster() const;
     int apply_lighting(int base_hit, const actor &target) const;
 
     set<string> message_cache;
@@ -359,7 +358,8 @@ spret zapping(zap_type ztype, int power, bolt &pbolt,
                    bool fail = false);
 bool player_tracer(zap_type ztype, int power, bolt &pbolt, int range = 0);
 
-set<coord_def> create_feat_splash(coord_def center, int radius, int num, int dur);
+set<coord_def> create_feat_splash(coord_def center, int radius, int num, int dur,
+                                  dungeon_feature_type new_feat = DNGN_SHALLOW_WATER);
 
 void init_zap_index();
 void clear_zap_info_on_exit();
@@ -371,6 +371,8 @@ int zap_ench_power(zap_type z_type, int pow, bool is_monster);
 int zap_to_hit(zap_type z_type, int power, bool is_monster);
 dice_def zap_damage(zap_type z_type, int power, bool is_monster, bool random = true);
 colour_t zap_colour(zap_type z_type);
+
+dice_def combustion_breath_damage(int pow, bool allow_random = true);
 
 void zappy(zap_type z_type, int power, bool is_monster, bolt &pbolt);
 void bolt_parent_init(const bolt &parent, bolt &child);

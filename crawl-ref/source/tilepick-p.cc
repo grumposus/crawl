@@ -7,6 +7,7 @@
 
 #include "artefact.h"
 #include "describe.h"
+#include "duration-type.h"
 #include "item-name.h"
 #include "item-prop.h"
 #include "item-status-flag-type.h"
@@ -24,6 +25,21 @@
 static tileidx_t _modrng(int mod, tileidx_t first, tileidx_t last)
 {
     return first + mod % (last - first + 1);
+}
+
+static tileidx_t _part_start(int p)
+{
+    if (p != TILEP_PART_HAND2)
+        return tile_player_part_start[p];
+    return tile_player_part_start[TILEP_PART_HAND1_MIRROR];
+}
+
+static unsigned int _part_count(int p)
+{
+    const unsigned int count = tile_player_part_count[p];
+    if (p != TILEP_PART_HAND2)
+        return count;
+    return count + tile_player_part_count[TILEP_PART_HAND1_MIRROR];
 }
 
 tileidx_t tilep_equ_weapon(const item_def &item)
@@ -219,6 +235,9 @@ tileidx_t tilep_equ_weapon(const item_def &item)
 
 tileidx_t tilep_equ_shield(const item_def &item)
 {
+    if (is_weapon(item) && you.has_mutation(MUT_WIELD_OFFHAND))
+        return tilep_equ_weapon(item);
+
     if (item.base_type != OBJ_ARMOUR)
         return 0;
 
@@ -248,6 +267,14 @@ tileidx_t tilep_equ_shield(const item_def &item)
                            TILEP_HAND2_ORB_LAST);
         default: return 0;
     }
+}
+
+tileidx_t mirror_weapon(const item_def &weapon)
+{
+    const tileidx_t unmirrored = tilep_equ_weapon(weapon);
+    if (unmirrored < TILEP_HAND1_FIRST || unmirrored > TILEP_HAND1_LAST)
+        return 0;
+    return unmirrored - TILEP_HAND1_FIRST + TILEP_HAND1_MIRROR_FIRST;
 }
 
 tileidx_t tilep_equ_armour(const item_def &item)
@@ -288,7 +315,7 @@ tileidx_t tilep_equ_armour(const item_def &item)
     case ARM_QUICKSILVER_DRAGON_ARMOUR: tile = TILEP_BODY_DRAGONARM_QUICKSILVER; break;
     case ARM_STORM_DRAGON_ARMOUR:   tile = TILEP_BODY_DRAGONARM_BLUE; break;
     case ARM_SHADOW_DRAGON_ARMOUR:  tile = TILEP_BODY_DRAGONARM_SHADOW; break;
-    case ARM_GOLD_DRAGON_ARMOUR:    tile = TILEP_BODY_DRAGONARM_GOLD; break;
+    case ARM_GOLDEN_DRAGON_ARMOUR:  tile = TILEP_BODY_DRAGONARM_GOLDEN; break;
     case ARM_SWAMP_DRAGON_ARMOUR:   tile = TILEP_BODY_DRAGONARM_BROWN; break;
     case ARM_PEARL_DRAGON_ARMOUR:   tile = TILEP_BODY_DRAGONARM_PEARL; break;
 
@@ -463,7 +490,6 @@ tileidx_t tileidx_player()
     case transformation::jelly:     ch = TILEP_MONS_JELLY;     break;
 #endif
     case transformation::fungus:    ch = TILEP_TRAN_MUSHROOM;  break;
-    case transformation::shadow:    ch = TILEP_TRAN_SHADOW;    break;
     case transformation::dragon:
     {
         switch (you.species)
@@ -479,6 +505,18 @@ tileidx_t tileidx_player()
         case SP_WHITE_DRACONIAN:   ch = TILEP_TRAN_DRAGON_WHITE;    break;
         case SP_RED_DRACONIAN:
         default:                   ch = TILEP_TRAN_DRAGON;          break;
+        }
+        break;
+    }
+    case transformation::slaughter:
+    {
+        switch (you.species)
+        {
+        case SP_ARMATAUR: ch = TILEP_TRAN_SLAUGHTER_ARMATAUR;  break;
+        case SP_NAGA:     ch = TILEP_TRAN_SLAUGHTER_NAGA;      break;
+        case SP_FELID:    ch = TILEP_TRAN_SLAUGHTER_FELID;     break;
+        case SP_OCTOPODE: ch = TILEP_TRAN_SLAUGHTER_OCTOPODE;  break;
+        default:          ch = TILEP_TRAN_SLAUGHTER_HUMANOID;  break;
         }
         break;
     }
@@ -570,9 +608,9 @@ tileidx_t tilep_species_to_base_tile(int sp, int level)
 #if TAG_MAJOR_VERSION == 34
     case SP_HALFLING:
         return TILEP_BASE_HALFLING;
-#endif
     case SP_HILL_ORC:
         return TILEP_BASE_ORC;
+#endif
     case SP_KOBOLD:
         return TILEP_BASE_KOBOLD;
     case SP_MUMMY:
@@ -637,6 +675,8 @@ tileidx_t tilep_species_to_base_tile(int sp, int level)
         return TILEP_BASE_GNOLL;
     case SP_DJINNI:
         return TILEP_BASE_DJINNI;
+    case SP_COGLIN:
+        return TILEP_BASE_COGLIN;
     default:
         return TILEP_BASE_HUMAN;
     }
@@ -647,7 +687,7 @@ void tilep_draconian_init(int sp, int level, tileidx_t *base, tileidx_t *wing)
     *base = TILEP_BASE_DRACONIAN + colour_offset;
 
     if (you.has_mutation(MUT_BIG_WINGS))
-        *wing = tile_player_part_start[TILEP_PART_DRCWING] + colour_offset;
+        *wing = _part_start(TILEP_PART_DRCWING) + colour_offset;
 }
 
 static const string DOLL_BASE_KEY = "doll_base";
@@ -730,10 +770,12 @@ void tilep_race_default(int sp, int level, dolls_data *doll)
             hair = 0;
             beard = TILEP_BEARD_MEDIUM_GREEN;
             break;
+#if TAG_MAJOR_VERSION == 34
+        case SP_HILL_ORC:
+#endif
         case SP_MINOTAUR:
         case SP_DEMONSPAWN:
         case SP_GHOUL:
-        case SP_HILL_ORC:
         case SP_KOBOLD:
         case SP_MUMMY:
         case SP_FORMICID:
@@ -957,7 +999,6 @@ void tilep_job_default(int job, dolls_data *doll)
             break;
 
         case JOB_GLADIATOR:
-            parts[TILEP_PART_HAND2] = TILEP_HAND2_KITE_SHIELD_ROUND2;
             parts[TILEP_PART_BODY]  = TILEP_BODY_BELT1;
             parts[TILEP_PART_LEG]   = TILEP_LEG_BELT_GRAY;
             parts[TILEP_PART_BOOTS] = TILEP_BOOTS_MIDDLE_GRAY;
@@ -1214,11 +1255,11 @@ void tilep_scan_parts(char *fbuf, dolls_data &doll, int species, int level)
         }
         else if (idx == 0)
             doll.parts[p] = 0;
-        else if (idx > tile_player_part_count[p])
-            doll.parts[p] = tile_player_part_start[p];
+        else if (idx > _part_count(p))
+            doll.parts[p] = _part_start(p);
         else
         {
-            const tileidx_t idx2 = tile_player_part_start[p] + idx - 1;
+            const tileidx_t idx2 = _part_start(p) + idx - 1;
             if (get_tile_texture(idx2) != TEX_PLAYER)
                 doll.parts[p] = TILEP_SHOW_EQUIP;
             else
@@ -1246,8 +1287,8 @@ void tilep_print_parts(char *fbuf, const dolls_data &doll)
             }
             else if (idx != 0)
             {
-                idx = doll.parts[p] - tile_player_part_start[p] + 1;
-                if (idx > tile_player_part_count[p])
+                idx = doll.parts[p] - _part_start(p) + 1;
+                if (idx > _part_count(p))
                     idx = 0;
             }
         }
@@ -1260,6 +1301,12 @@ void tilep_print_parts(char *fbuf, const dolls_data &doll)
     }
     ptr[0] = '\n'; // erase the last ':'
     ptr[1] = 0;
+}
+
+bool player_uses_monster_tile()
+{
+    return Options.tile_use_monster != MONS_0
+            || you.duration[DUR_EXECUTION];
 }
 
 #endif

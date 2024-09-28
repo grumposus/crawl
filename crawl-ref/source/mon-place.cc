@@ -88,6 +88,7 @@ static monster* _place_pghost_aux(const mgen_data &mg, const monster *leader,
                                    level_id place,
                                    bool force_pos, bool dont_place);
 
+static int _fill_apostle_band(monster& mons, monster_type* band);
 
 /**
  * Is this feature "close enough" to the one we want for monster generation?
@@ -102,7 +103,7 @@ static bool _feat_compatible(dungeon_feature_type wanted_feat,
                              dungeon_feature_type actual_feat)
 {
     return wanted_feat == actual_feat
-           || wanted_feat == DNGN_DEEP_WATER && feat_is_watery(actual_feat)
+           || wanted_feat == DNGN_DEEP_WATER && feat_is_water(actual_feat)
            || wanted_feat == DNGN_FLOOR && feat_has_solid_floor(actual_feat);
 }
 
@@ -141,8 +142,6 @@ bool monster_habitable_grid(const monster* mon,
  * @param wanted_grid if == DNGN_UNSEEN, or if the monster can't survive on it,
  *                    ignored. Otherwise, return false even if actual_grid is
  *                    survivable, if actual_grid isn't similar to wanted_grid.
- * @param flies if true, treat the monster as flying even if the monster class
- *              can't usually fly.
  */
 bool monster_habitable_grid(monster_type mt,
                             dungeon_feature_type actual_grid,
@@ -159,8 +158,12 @@ bool monster_habitable_grid(monster_type mt,
 #endif
     // The kraken is so large it cannot enter shallow water.
     // Its tentacles can, and will, though.
-    if (actual_grid == DNGN_SHALLOW_WATER && mt == MONS_KRAKEN)
+    if ((actual_grid == DNGN_SHALLOW_WATER
+        || actual_grid == DNGN_TOXIC_BOG)
+        && mt == MONS_KRAKEN)
+    {
         return false;
+    }
 
     const dungeon_feature_type feat_preferred =
         habitat2grid(mons_class_primary_habitat(mt));
@@ -200,31 +203,6 @@ bool monster_habitable_grid(monster_type mt,
         return true;
 
     return false;
-}
-
-// Returns true if the monster can submerge in the given grid.
-bool monster_can_submerge(const monster* mon, dungeon_feature_type feat)
-{
-    if (!mon->is_habitable_feat(feat))
-        return false;
-    if (mons_class_flag(mon->type, M_SUBMERGES))
-    {
-        switch (mons_habitat(*mon))
-        {
-        case HT_WATER:
-        case HT_AMPHIBIOUS:
-            return feat_is_watery(feat);
-        case HT_LAVA:
-        case HT_AMPHIBIOUS_LAVA:
-            return feat == DNGN_LAVA;
-        case HT_LAND:
-            return feat == DNGN_FLOOR;
-        default:
-            return false;
-        }
-    }
-    else
-        return false;
 }
 
 static int _ood_fuzzspan(level_id &place)
@@ -524,21 +502,25 @@ monster_type resolve_monster_type(monster_type mon_type,
     return mon_type;
 }
 
-// For generation purposes, don't treat simulacra of lava enemies as
-// being able to place on lava.
 monster_type fixup_zombie_type(const monster_type cls,
-                                         const monster_type base_type)
+                               const monster_type base_type)
 {
-    return (mons_class_is_zombified(cls)
-            && mons_class_secondary_habitat(base_type) != HT_LAVA)
-            ? base_type
-            : cls;
+    // Yredelemnul's bound souls can fly - they aren't bound by their old flesh.
+    // Other zombies, regrettably, still are.
+    // XXX: consider replacing the latter check with monster_class_flies(cls)
+    // and adjusting vaults that use spectral krakens.
+    if (!mons_class_is_zombified(cls) || cls == MONS_BOUND_SOUL)
+        return cls;
+    // For generation purposes, don't treat simulacra of lava enemies as
+    // being able to place on lava.
+    if (mons_class_secondary_habitat(base_type) == HT_LAVA)
+        return cls;
+    return base_type;
 }
 
 // Checks if the monster is ok to place at mg_pos. If force_location
 // is true, then we'll be less rigorous in our checks, in particular
-// allowing land monsters to be placed in shallow water and water
-// creatures in fountains.
+// allowing land monsters to be placed in shallow water.
 static bool _valid_monster_generation_location(const mgen_data &mg,
                                                 const coord_def &mg_pos)
 {
@@ -774,9 +756,19 @@ monster* place_monster(mgen_data mg, bool force_pos, bool dont_place)
     if (mon->mindex() >= MAX_MONSTERS - 30)
         return mon;
 
+    if (band_size > 1)
+        mon->flags |= MF_BAND_LEADER;
+
     const bool priest = mon->is_priest();
 
     mgen_data band_template = mg;
+
+    // Create apostle bands via custom method, before they would be used
+    if (mon->type == MONS_ORC_APOSTLE && create_band)
+    {
+        band_size = _fill_apostle_band(*mon, band_monsters);
+        leader = true;
+    }
 
     if (leader && !mg.summoner)
     {
@@ -823,6 +815,11 @@ monster* place_monster(mgen_data mg, bool force_pos, bool dont_place)
             }
             else if (mon->type == MONS_KIRKE)
                 member->props[KIRKE_BAND_KEY] = true;
+            else if (mon->type == MONS_ORC_APOSTLE)
+            {
+                member->flags |= (MF_HARD_RESET | MF_APOSTLE_BAND | MF_NO_REWARD);
+                member->mark_summoned(0, true, 0, false);
+            }
         }
     }
     dprf(DIAG_DNGN, "Placing %s at %d,%d", mon->name(DESC_PLAIN, true).c_str(),
@@ -844,13 +841,17 @@ monster* get_free_monster()
     return nullptr;
 }
 
-void mons_add_blame(monster* mon, const string &blame_string)
+// TODO: make mon a reference
+void mons_add_blame(monster* mon, const string &blame_string, bool at_front)
 {
     const bool exists = mon->props.exists(BLAME_KEY);
     CrawlStoreValue& blame = mon->props[BLAME_KEY];
     if (!exists)
         blame.new_vector(SV_STR, SFLAG_CONST_TYPE);
-    blame.get_vector().push_back(blame_string);
+    if (at_front)
+        blame.get_vector().insert(0, blame_string);
+    else
+        blame.get_vector().push_back(blame_string);
 }
 
 static void _place_twister_clouds(monster *mon)
@@ -863,6 +864,33 @@ static void _place_twister_clouds(monster *mon)
     }
 
     polar_vortex_damage(mon, -10);
+}
+
+static void _place_monster_maybe_override_god(monster *mon, monster_type cls,
+                                              level_id place)
+{
+    // [ds] Vault defs can request priest monsters of unusual types.
+    if (mon->is_priest() && mon->god == GOD_NO_GOD)
+    {
+        mon->god = GOD_NAMELESS;
+        return;
+    }
+
+    // 1 out of 7 non-priestly orcs who are unbelievers stay that way,
+    // and the others follow Beogh's word.
+    if (mons_genus(cls) == MONS_ORC && mon->god == GOD_NO_GOD)
+    {
+        if (!one_chance_in(7))
+            mon->god = GOD_BEOGH;
+    }
+    // 1 out of 7 angels or darvas who normally worship TSO are adopted
+    // by Xom if they're in the Abyss.
+    else if ((cls == MONS_ANGEL || cls == MONS_DAEVA)
+              && mon->god == GOD_SHINING_ONE)
+    {
+        if (one_chance_in(7) && place == BRANCH_ABYSS)
+            mon->god = GOD_XOM;
+    }
 }
 
 static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
@@ -965,6 +993,19 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
         }
     }
 
+    // Pass along type props for apostles
+    if (mon->type == MONS_ORC_APOSTLE)
+    {
+        if (mg.props.exists(APOSTLE_TYPE_KEY))
+            mon->props[APOSTLE_TYPE_KEY] = mg.props[APOSTLE_TYPE_KEY].get_int();
+
+        if (mg.props.exists(APOSTLE_POWER_KEY))
+            mon->props[APOSTLE_POWER_KEY] = mg.props[APOSTLE_POWER_KEY].get_int();
+
+        if (mg.props.exists(APOSTLE_BAND_POWER_KEY))
+            mon->props[APOSTLE_BAND_POWER_KEY] = mg.props[APOSTLE_BAND_POWER_KEY].get_int();
+    }
+
     // Generate a brand shiny new monster, or zombie.
     if (mons_class_is_zombified(mg.cls))
     {
@@ -1011,98 +1052,21 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
     // Is it a god gift?
     if (mg.god != GOD_NO_GOD)
         mons_make_god_gift(*mon, mg.god);
-    // Not a god gift, give priestly monsters a god.
-    else if (mon->is_priest())
+    // Not a god gift. Give the monster a god.
+    else
     {
-        // Berserkers belong to Trog.
-        if (mg.cls == MONS_SPRIGGAN_BERSERKER)
-            mon->god = GOD_TROG;
-        // Death knights belong to Yredelemnul.
-        else if (mg.cls == MONS_DEATH_KNIGHT)
-            mon->god = GOD_YREDELEMNUL;
-        // Seraphim follow the Shining One.
-        else if (mg.cls == MONS_SERAPH)
-            mon->god = GOD_SHINING_ONE;
-        // Draconian stormcallers worship Qazlal.
-        else if (mg.cls == MONS_DRACONIAN_STORMCALLER)
-            mon->god = GOD_QAZLAL;
-        else if (mg.cls == MONS_DEMONSPAWN_BLOOD_SAINT
-                 || mg.cls == MONS_ASTERION)
-        {
-            mon->god = GOD_MAKHLEB;
-        }
-        else if (mg.cls == MONS_DEMONSPAWN_BLACK_SUN
-                 || mg.cls == MONS_BURIAL_ACOLYTE)
-        {
-            mon->god = GOD_KIKUBAAQUDGHA;
-        }
-        else if (mg.cls == MONS_DEMONSPAWN_CORRUPTER
-                 || mg.cls == MONS_MLIOGLOTL)
-        {
-            mon->god = GOD_LUGONU;
-        }
-        else
-        {
-            switch (mons_genus(mg.cls))
-            {
-            case MONS_ORC:
-                mon->god = GOD_BEOGH;
-                break;
-            case MONS_JELLY:
-                mon->god = GOD_JIYVA;
-                break;
-            case MONS_MUMMY:
-            case MONS_DRACONIAN:
-            case MONS_ELF:
-                // [ds] Vault defs can request priest monsters of unusual types.
-            default:
-                mon->god = GOD_NAMELESS;
-                break;
-            }
-        }
-    }
-    // The Royal Jelly belongs to Jiyva.
-    else if (mg.cls == MONS_ROYAL_JELLY)
-        mon->god = GOD_JIYVA;
-    // Mennas belongs to Zin.
-    else if (mg.cls == MONS_MENNAS)
-        mon->god = GOD_ZIN;
-    // Yiuf is a faithful Xommite.
-    else if (mg.cls == MONS_CRAZY_YIUF)
-        mon->god = GOD_XOM;
-    // Grinder and Ignacio belong to Makhleb.
-    // Hell Knights need some reason to be evil.
-    else if (mg.cls == MONS_GRINDER
-             || mg.cls == MONS_IGNACIO
-             || mg.cls == MONS_HELL_KNIGHT)
-    {
-        mon->god = GOD_MAKHLEB;
-    }
-    // 1 out of 7 non-priestly orcs are unbelievers.
-    else if (mons_genus(mg.cls) == MONS_ORC)
-    {
-        if (!one_chance_in(7))
-            mon->god = GOD_BEOGH;
-    }
-    else if (mg.cls == MONS_APIS)
-        mon->god = GOD_ELYVILON;
-    else if (mg.cls == MONS_PROFANE_SERVITOR)
-        mon->god = GOD_YREDELEMNUL;
-    // Angels (other than Mennas) and daevas belong to TSO, but 1 out of
-    // 7 in the Abyss are adopted by Xom.
-    else if (mons_class_holiness(mg.cls) == MH_HOLY)
-    {
-        if (mg.place != BRANCH_ABYSS || !one_chance_in(7))
-            mon->god = GOD_SHINING_ONE;
-        else
-            mon->god = GOD_XOM;
+        mon->god = m_ent->god;
+        _place_monster_maybe_override_god(mon, mg.cls, mg.place);
     }
 
-    // Holy monsters need their halo!
-    if (mon->holiness() & MH_HOLY)
+    // Monsters that need halos/silence auras/umbras.
+    if ((mon->holiness() & MH_HOLY)
+         || mg.cls == MONS_SILENT_SPECTRE
+         || mg.cls == MONS_PROFANE_SERVITOR
+         || mons_is_ghost_demon(mg.cls))
+    {
         invalidate_agrid(true);
-    if (mg.cls == MONS_SILENT_SPECTRE || mg.cls == MONS_PROFANE_SERVITOR)
-        invalidate_agrid(true);
+    }
 
     // If the caller requested a specific colour for this monster, apply
     // it now.
@@ -1178,6 +1142,12 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
     if (mg.cls == MONS_GLOWING_SHAPESHIFTER)
         mon->add_ench(ENCH_GLOWING_SHAPESHIFTER);
 
+    if (mg.cls == MONS_ABOMINATION_SMALL || mg.cls == MONS_ABOMINATION_LARGE)
+    {
+        enchant_type buff = random_choose(ENCH_MIGHT, ENCH_HASTE, ENCH_REGENERATION);
+        mon->add_ench(mon_enchant(buff, 0, 0, INFINITE_DURATION));
+    }
+
     if (mg.cls == MONS_TWISTER || mg.cls == MONS_DIAMOND_OBELISK)
     {
         mon->props[POLAR_VORTEX_KEY].get_int() = you.elapsed_time;
@@ -1212,7 +1182,7 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
 
 
     if (mon->has_spell(SPELL_REPEL_MISSILES))
-        mon->add_ench(ENCH_REPEL_MISSILES);
+        mon->add_ench(mon_enchant(ENCH_REPEL_MISSILES, 1, mon, INFINITE_DURATION));
 
     if (mons_class_flag(mon->type, M_FIRE_RING))
         mon->add_ench(ENCH_RING_OF_FLAMES);
@@ -1294,9 +1264,6 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
         mon->hit_points     *= mon->blob_size;
         mon->max_hit_points *= mon->blob_size;
     }
-
-    if (monster_can_submerge(mon, env.grid(fpos)) && !summoned)
-        mon->add_ench(ENCH_SUBMERGED);
 
     // Set attitude, behaviour and target.
     mon->attitude  = ATT_HOSTILE;
@@ -1426,7 +1393,7 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
         }
     }
 
-    // Initialise (very) ugly things and pandemonium demons.
+    // Initialise (very) ugly things and dancing weapons
     if (mon->type == MONS_UGLY_THING
         || mon->type == MONS_VERY_UGLY_THING)
     {
@@ -1462,6 +1429,8 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
         mon->set_ghost(ghost);
         mon->ghost_demon_init();
     }
+    else if (mon->type == MONS_ORC_APOSTLE)
+        mon->flags |= (MF_APOSTLE_BAND | MF_HARD_RESET);
 
     tile_init_props(mon);
 
@@ -1829,7 +1798,7 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_RIVER_RAT,       { {}, {{ BAND_GREEN_RATS, {4, 10} }}}},
     { MONS_HELL_RAT,        { {}, {{ BAND_HELL_RATS, {3, 7} }}}},
     { MONS_DREAM_SHEEP,     { {}, {{ BAND_DREAM_SHEEP, {3, 7} }}}},
-    { MONS_GHOUL,           { {}, {{ BAND_GHOULS, {2, 5} }}}},
+    { MONS_GHOUL,           { {}, {{ BAND_GHOULS, {1, 4} }}}},
     { MONS_KIRKE,           { {}, {{ BAND_HOGS, {3, 8}, true }}}},
     { MONS_HOG,             { {}, {{ BAND_HOGS, {1, 4} }}}},
     { MONS_VAMPIRE_MOSQUITO, { {}, {{ BAND_VAMPIRE_MOSQUITOES, {1, 4} }}}},
@@ -1905,14 +1874,14 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_TARANTELLA,      { {2}, {{ BAND_TARANTELLA, {1, 5} }}}},
     { MONS_VAULT_WARDEN,    { {}, {{ BAND_YAKTAURS, {2, 6}, true },
                                    { BAND_VAULT_WARDEN, {2, 5}, true }}}},
-    { MONS_IRONBOUND_PRESERVER, { {}, {{ BAND_DEEP_TROLLS, {3, 6}, true }}}},
+    { MONS_IRONBOUND_PRESERVER, { {}, {{ BAND_PRESERVER, {3, 6}, true }}}},
     { MONS_TENGU_CONJURER,  { {2}, {{ BAND_TENGU, {1, 2} }}}},
     { MONS_TENGU_WARRIOR,   { {2}, {{ BAND_TENGU, {1, 2} }}}},
     { MONS_SOJOBO,          { {}, {{ BAND_SOJOBO, {2, 3}, true }}}},
     { MONS_SPRIGGAN_RIDER,  { {3}, {{ BAND_SPRIGGAN_RIDERS, {1, 3} }}}},
     { MONS_SPRIGGAN_BERSERKER, { {2}, {{ BAND_SPRIGGANS, {2, 4} }}}},
     { MONS_SPRIGGAN_DEFENDER, { {}, {{ BAND_SPRIGGAN_ELITES, {2, 5} }}}},
-    { MONS_THE_ENCHANTRESS, { {}, {{ BAND_ENCHANTRESS, {6, 11}, true }}}},
+    { MONS_ENCHANTRESS, { {}, {{ BAND_ENCHANTRESS, {6, 11}, true }}}},
     { MONS_SHAMBLING_MANGROVE, { {4}, {{ BAND_SPRIGGAN_RIDERS, {1, 2} }}}},
     { MONS_VAMPIRE_KNIGHT,  { {4}, {{ BAND_PHANTASMAL_WARRIORS, {2, 3}, true }}}},
     { MONS_RAIJU,           { {}, {{ BAND_RAIJU, {2, 4} }}}},
@@ -1921,13 +1890,17 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_DEMONSPAWN_BLOOD_SAINT, { {}, {{ BAND_BLOOD_SAINT, {1, 3} }}}},
     { MONS_DEMONSPAWN_WARMONGER, { {}, {{ BAND_WARMONGER, {1, 3} }}}},
     { MONS_DEMONSPAWN_CORRUPTER, { {}, {{ BAND_CORRUPTER, {1, 3} }}}},
-    { MONS_DEMONSPAWN_BLACK_SUN, { {}, {{ BAND_BLACK_SUN, {1, 3} }}}},
+    { MONS_DEMONSPAWN_SOUL_SCHOLAR, { {}, {{ BAND_SOUL_SCHOLAR, {1, 3} }}}},
     { MONS_VASHNIA,         { {}, {{ BAND_VASHNIA, {3, 6}, true }}}},
     { MONS_ROBIN,           { {}, {{ BAND_ROBIN, {10, 13}, true }}}},
     { MONS_RAKSHASA,        { {2, 0, []() {
         return branch_has_monsters(you.where_are_you)
             || !vault_mon_types.empty();
     }},                           {{ BAND_RANDOM_SINGLE, {1, 2} }}}},
+    { MONS_POLTERGUARDIAN,  { {2, 0, []() {
+        return branch_has_monsters(you.where_are_you)
+            || !vault_mon_types.empty();
+    }},                           {{ BAND_RANDOM_SINGLE, {1, 3} }}}},
     { MONS_CEREBOV,         { {}, {{ BAND_CEREBOV, {5, 8}, true }}}},
     { MONS_GLOORX_VLOQ,     { {}, {{ BAND_GLOORX_VLOQ, {5, 8}, true }}}},
     { MONS_MNOLEG,          { {}, {{ BAND_MNOLEG, {5, 8}, true }}}},
@@ -1970,7 +1943,9 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_GRUNN,            { {}, {{ BAND_DOOM_HOUNDS, {2, 4}, true }}}},
     { MONS_NORRIS,           { {}, {{ BAND_SKYSHARKS, {2, 5}, true }}}},
     { MONS_UFETUBUS,         { {}, {{ BAND_UFETUBI, {1, 2} }}}},
+    { MONS_SIN_BEAST,        { {}, {{ BAND_SIN_BEASTS, {1, 2} }}}},
     { MONS_KOBOLD_BLASTMINER, { {}, {{ BAND_BLASTMINER, {0, 2} }}}},
+    { MONS_ARACHNE,          { {}, {{ BAND_ORB_SPIDERS, {3, 5}}}}},
 
     // special-cased band-sizes
     { MONS_SPRIGGAN_DRUID,  { {3}, {{ BAND_SPRIGGAN_DRUID, {0, 1}, true }}}},
@@ -1979,7 +1954,7 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_LAUGHING_SKULL, { {}, {{ BAND_LAUGHING_SKULLS, {0, 1} }}}},
     { MONS_WEEPING_SKULL, { {}, {{ BAND_WEEPING_SKULLS, {0, 1} }}}},
     { MONS_PROTEAN_PROGENITOR, { {}, {{ BAND_PROTEAN_PROGENITORS, {0, 1} }}}},
-
+    { MONS_THERMIC_DYNAMO, { {}, {{ BAND_THERMIC_DYNAMOS, {0, 1} }}}},
 };
 
 static band_type _choose_band(monster_type mon_type, int *band_size_p,
@@ -2115,6 +2090,7 @@ static band_type _choose_band(monster_type mon_type, int *band_size_p,
         break;
 
     case MONS_PROTEAN_PROGENITOR:
+    case MONS_THERMIC_DYNAMO:
         if (x_chance_in_y(2, 3))
             band_size = 1;
         break;
@@ -2213,11 +2189,15 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
     { BAND_EXECUTIONER,         {{{MONS_ABOMINATION_LARGE, 1}}}},
     { BAND_VASHNIA,             {{{MONS_NAGA_SHARPSHOOTER, 1}}}},
     { BAND_PHANTASMAL_WARRIORS, {{{MONS_PHANTASMAL_WARRIOR, 1}}}},
-    { BAND_DEEP_TROLLS,         {{{MONS_DEEP_TROLL, 1}}}},
+    { BAND_PRESERVER,           {{{MONS_DEEP_TROLL, 10},
+                                  {MONS_POLTERGUARDIAN, 2}},
+                                {{MONS_DEEP_TROLL, 1}}}},
     { BAND_BONE_DRAGONS,        {{{MONS_BONE_DRAGON, 1}}}},
     { BAND_SPECTRALS,           {{{MONS_SPECTRAL_THING, 1}}}},
     { BAND_UFETUBI,             {{{MONS_UFETUBUS, 1}}}},
+    { BAND_SIN_BEASTS,          {{{MONS_SIN_BEAST, 1}}}},
     { BAND_BLASTMINER,          {{{MONS_KOBOLD_BLASTMINER, 1}}}},
+    { BAND_THERMIC_DYNAMOS,     {{{MONS_THERMIC_DYNAMO, 1}}}},
     { BAND_PROTEAN_PROGENITORS, {{{MONS_PROTEAN_PROGENITOR, 1}}}},
     { BAND_DEEP_ELF_KNIGHT,     {{{MONS_DEEP_ELF_AIR_MAGE, 46},
                                   {MONS_DEEP_ELF_FIRE_MAGE, 46},
@@ -2311,8 +2291,7 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
     { BAND_NAGA_SHARPSHOOTER,   {{{MONS_NAGA_SHARPSHOOTER, 1},
                                   {MONS_NAGA, 2}}}},
     { BAND_GHOULS,              {{{MONS_GHOUL, 4},
-                                  {MONS_NECROPHAGE, 3},
-                                  {MONS_BOG_BODY, 2}}}},
+                                  {MONS_BOG_BODY, 5}}}},
     { BAND_ILSUIW,              {{{MONS_MERFOLK_SIREN, 6},
                                   {MONS_MERFOLK, 3},
                                   {MONS_MERFOLK_JAVELINEER, 2},
@@ -2361,6 +2340,10 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
                                  {MONS_IRONBOUND_FROSTHEART, 3},
                                  {MONS_IRONBOUND_THUNDERHULK, 2},
                                  {MONS_VAULT_GUARD, 20}},
+
+        // 25% chance of a polterguardian
+                                {{MONS_POLTERGUARDIAN, 1},
+                                 {MONS_VAULT_GUARD, 4}},
 
                                 {{MONS_VAULT_GUARD, 1}}}},
 
@@ -2472,15 +2455,15 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
                                  {{MONS_DEMONSPAWN_BLOOD_SAINT, 1},
                                   {MONS_DEMONSPAWN_WARMONGER, 1},
                                   {MONS_DEMONSPAWN_CORRUPTER, 1},
-                                  {MONS_DEMONSPAWN_BLACK_SUN, 1}}}},
+                                  {MONS_DEMONSPAWN_SOUL_SCHOLAR, 1}}}},
 
     { BAND_WARMONGER,           {{{MONS_EXECUTIONER, 1},
-                                  {MONS_REAPER, 3}},
+                                  {MONS_SIN_BEAST, 3}},
 
                                  {{MONS_DEMONSPAWN_BLOOD_SAINT, 1},
                                   {MONS_DEMONSPAWN_WARMONGER, 1},
                                   {MONS_DEMONSPAWN_CORRUPTER, 1},
-                                  {MONS_DEMONSPAWN_BLACK_SUN, 1}}}},
+                                  {MONS_DEMONSPAWN_SOUL_SCHOLAR, 1}}}},
 
     { BAND_CORRUPTER,           {{{MONS_CACODEMON, 1},
                                   {MONS_SHADOW_DEMON, 3}},
@@ -2488,19 +2471,21 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
                                  {{MONS_DEMONSPAWN_BLOOD_SAINT, 1},
                                   {MONS_DEMONSPAWN_WARMONGER, 1},
                                   {MONS_DEMONSPAWN_CORRUPTER, 1},
-                                  {MONS_DEMONSPAWN_BLACK_SUN, 1}}}},
+                                  {MONS_DEMONSPAWN_SOUL_SCHOLAR, 1}}}},
 
-    { BAND_BLACK_SUN,           {{{MONS_LOROCYPROCA, 1},
+    { BAND_SOUL_SCHOLAR,        {{{MONS_REAPER, 1},
                                   {MONS_SOUL_EATER, 1}},
 
                                  {{MONS_DEMONSPAWN_BLOOD_SAINT, 1},
                                   {MONS_DEMONSPAWN_WARMONGER, 1},
                                   {MONS_DEMONSPAWN_CORRUPTER, 1},
-                                  {MONS_DEMONSPAWN_BLACK_SUN, 1}}}},
+                                  {MONS_DEMONSPAWN_SOUL_SCHOLAR, 1}}}},
     // for Grunn
     { BAND_DOOM_HOUNDS,         {{{MONS_DOOM_HOUND, 1}}}},
     // for Norris
     { BAND_SKYSHARKS,           {{{MONS_SKYSHARK, 1}}}},
+    // for Arachne
+    { BAND_ORB_SPIDERS,         {{{MONS_ORB_SPIDER, 1}}}},
 };
 
 /**
@@ -2973,7 +2958,8 @@ monster* create_monster(mgen_data mg, bool fail_msg)
 }
 
 bool find_habitable_spot_near(const coord_def& where, monster_type mon_type,
-                              int radius, bool allow_centre, coord_def& empty)
+                              int radius, bool allow_centre, coord_def& empty,
+                              bool in_player_sight)
 {
     int good_count = 0;
 
@@ -2987,6 +2973,9 @@ bool find_habitable_spot_near(const coord_def& where, monster_type mon_type,
             continue;
 
         if (!monster_habitable_grid(mon_type, env.grid(*ri)))
+            continue;
+
+        if (in_player_sight && !you.see_cell_no_trans(*ri))
             continue;
 
         if (one_chance_in(++good_count))
@@ -3028,10 +3017,9 @@ monster_type random_demon_by_tier(int tier)
                              MONS_BLIZZARD_DEMON,
                              MONS_BALRUG,
                              MONS_CACODEMON,
-                             MONS_HELL_BEAST,
+                             MONS_SIN_BEAST,
                              MONS_HELLION,
                              MONS_REAPER,
-                             MONS_LOROCYPROCA,
                              MONS_TORMENTOR,
                              MONS_SHADOW_DEMON);
     case 1:
@@ -3292,4 +3280,149 @@ void setup_vault_mon_list()
     }
     if (size)
         dprf(DIAG_MONPLACE, "Level has a custom monster set.");
+}
+
+// Code for determining Beogh apostle bands, based on power and apostle type
+enum apostle_band_type
+{
+    APOSTLE_BAND_ORCS,
+    APOSTLE_BAND_BRUTES,
+    APOSTLE_BAND_DEMONS,
+    APOSTLE_BAND_BEASTS,
+
+    NUM_APOSTLE_BANDS,
+};
+
+static const vector<pop_entry> band_weights[] =
+{
+
+// APOSTLE_BAND_ORCS,
+{
+    {  0,  35,  400, FALL, MONS_ORC },
+    {  0,  55,  350, SEMI, MONS_ORC_WARRIOR },
+    { -10, 75,  125, PEAK, MONS_ORC_PRIEST },
+    {  0,  55,  200, FALL, MONS_ORC_WIZARD },
+    {  25, 100, 250, SEMI, MONS_ORC_KNIGHT },
+    {  25, 110, 150, SEMI, MONS_ORC_HIGH_PRIEST },
+    {  25, 110, 100, SEMI, MONS_ORC_SORCERER },
+    {  50, 100, 200, RISE, MONS_ORC_WARLORD },
+},
+
+// APOSTLE_BAND_BRUTES
+{
+    {   0,  40,  50, FALL, MONS_NO_MONSTER },
+    {   0,  30,  50, FALL, MONS_OGRE },
+    {  20,  45,  35, FLAT, MONS_TROLL },
+    {  25,  70,  50, SEMI, MONS_CYCLOPS },
+    {  40, 120, 150, RISE, MONS_ETTIN },
+    {  45, 80,   80, SEMI, MONS_IRON_TROLL },
+    {  60, 120, 100, RISE, MONS_STONE_GIANT },
+},
+
+// APOSTLE_BAND_DEMONS,
+{
+    {0, 25, 100, FALL, MONS_CRIMSON_IMP},
+    {0, 25, 100, FALL, MONS_QUASIT},
+    {0, 25, 100, FALL, MONS_WHITE_IMP},
+    {0, 25, 100, FALL, MONS_UFETUBUS},
+    {0, 25, 100, FALL, MONS_IRON_IMP},
+    {0, 25, 100, FALL, MONS_SHADOW_IMP},
+
+    {20, 55, 125, SEMI, MONS_ICE_DEVIL},
+    {20, 55, 125, SEMI, MONS_RUST_DEVIL},
+    {20, 55, 125, SEMI, MONS_ORANGE_DEMON},
+    {20, 55, 125, SEMI, MONS_RED_DEVIL},
+    {20, 55, 125, SEMI, MONS_HELLWING},
+
+    {45, 70, 150, SEMI, MONS_SUN_DEMON},
+    {45, 70, 150, SEMI, MONS_SOUL_EATER},
+    {45, 70, 150, SEMI, MONS_SMOKE_DEMON},
+    {45, 70, 150, SEMI, MONS_YNOXINUL},
+    {45, 70, 150, SEMI, MONS_SIXFIRHY},
+
+    {55, 110, 150, RISE, MONS_REAPER},
+    {55, 110, 150, RISE, MONS_GREEN_DEATH},
+    {55, 110, 150, RISE, MONS_BLIZZARD_DEMON},
+    {55, 110, 150, RISE, MONS_BALRUG},
+    {55, 110, 150, RISE, MONS_HELLION},
+    {55, 110,  80, RISE, MONS_SHADOW_DEMON},
+},
+
+// APOSTLE_BAND_BEASTS,
+{
+    {0,  20,  200, FALL, MONS_HOUND},
+    {0,  55,  200, PEAK, MONS_WOLF},
+    {25,  60, 220, FLAT, MONS_WARG},
+    {45,  70, 150, RISE, MONS_HELL_HOUND},
+    {40,  70,  80, RISE, MONS_RAIJU},
+    {35,  75, 120, SEMI, MONS_MANTICORE},
+    {40,  80, 140, SEMI, MONS_LINDWURM},
+    {70, 110,  90, PEAK, MONS_LINDWURM},
+},
+
+};
+
+static void _fill_types_by_weight(vector<monster_type>& vec, apostle_band_type type, int pow,
+                                  int num, bool all_same = false)
+{
+    monster_picker picker = monster_picker();
+
+    monster_type mtype = picker.pick(band_weights[int(type)], pow, MONS_NO_MONSTER);
+
+    for (int i = 0; i < num; ++i)
+    {
+        if (mtype != MONS_NO_MONSTER)
+            vec.push_back(mtype);
+
+        if (!all_same)
+            mtype = picker.pick(band_weights[int(type)], pow, MONS_NO_MONSTER);
+    }
+}
+
+static int _fill_apostle_band(monster& mons, monster_type* band)
+{
+    // Pull type and power from props, if they have been set
+    const apostle_type type = mons.props.exists(APOSTLE_TYPE_KEY)
+                                ? static_cast<apostle_type>(mons.props[APOSTLE_TYPE_KEY].get_int())
+                                : APOSTLE_WARRIOR;
+
+    const int pow = mons.props.exists(APOSTLE_BAND_POWER_KEY)
+                        ? mons.props[APOSTLE_BAND_POWER_KEY].get_int()
+                        : 50;
+
+    vector<monster_type> vec;
+
+    switch (type)
+    {
+        default:
+        case APOSTLE_WARRIOR:
+        case APOSTLE_PRIEST:
+        {
+            int num_orcs = random_range(0, 5);
+            int num_brutes = (5 - num_orcs) / 2;
+
+            if (pow > 50)
+                num_brutes += random_range(0, 2);
+
+            _fill_types_by_weight(vec, APOSTLE_BAND_ORCS, pow, num_orcs);
+            _fill_types_by_weight(vec, APOSTLE_BAND_BRUTES, pow, num_brutes);
+        }
+        break;
+
+        case APOSTLE_WIZARD:
+            _fill_types_by_weight(vec, APOSTLE_BAND_DEMONS, pow, random_range(2, 3), coinflip());
+            if (coinflip())
+            {
+                if (coinflip())
+                    _fill_types_by_weight(vec, APOSTLE_BAND_DEMONS, pow / 2, random_range(2, 3), coinflip());
+                else
+                    _fill_types_by_weight(vec, APOSTLE_BAND_ORCS, pow, random_range(2, 3));
+            }
+        break;
+    }
+
+    for (unsigned int i = 0; i < vec.size(); ++i)
+        band[i+1] = vec[i];
+
+    return vec.size()+1;
 }

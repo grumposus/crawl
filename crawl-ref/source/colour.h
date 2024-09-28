@@ -58,14 +58,13 @@ enum element_type
     ETC_DITHMENOS,      // Dithmenos altar colours
     ETC_ELEMENTAL,      // Cycling elemental colours
     ETC_INCARNADINE,    // Draining clouds coloured like raw flesh
-#if TAG_MAJOR_VERSION == 34
-    ETC_SHINING,        // shining gold (Gozag)
-#endif
+    ETC_FOUL_FLAME,     // Foul flame
     ETC_MOUNTAIN,       // Mountain boots
     ETC_WU_JIAN,        // Wu Jian Chinese-inspired colours
     ETC_AWOKEN_FOREST,  // Angry trees.
     ETC_CANDLES,        // Ignis flickering candles
     ETC_STEEL,          // a brighter iron
+    ETC_GLITTER,        // Klown pie decoration, all the bright colours
     ETC_DISCO = 96,
     ETC_FIRST_LUA = ETC_DISCO, // colour indices have to be <128
 

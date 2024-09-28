@@ -107,7 +107,7 @@
     Alexander Beisig
     benadryl
     biasface
-    bjobae
+    Björn Bähre
     Stu Black
     blackcustard
     Peter 'xFleury' Blain
@@ -151,6 +151,7 @@
     cut1less
     Matthew Daley
     David Damerell
+    Darby
     Paul Dejean
     Denzi
     Sean Dewar
@@ -204,6 +205,7 @@
     Sophie Hamilton
     Chris Hamons
     Tomas Krag Hansen
+    Lexi Hattaway
     Taylor Hedberg
     Anders Heggestøyl
     Alex Henry
@@ -212,10 +214,12 @@
     Chris Honey
     Sylvia 'Onia' Hörnke
     Benoit Hudson
+    Michael Hunter
     Hurricos
     Iainuki
     ICC
     Icy Lich
+    Wizard Ike
     Ilyak
     Matthew Ince
     Mitsuhiro Itakura
@@ -270,6 +274,7 @@
     István Markó
     Gabriel Marks
     Jean Martel
+    meckryl
     James 'Eronarn' Meickle
     Jacob Meigs
     mgdelmonte
@@ -314,10 +319,13 @@
     panicbit
     Anders Papitto
     William Parker
+    Christopher Partin
     Pedro
     Pekkekke
+    Alejandro Ramirez
     Rytis Petronis
     Arlen Phillips
+    pianoman523
     pikaro
     Lemuel Pitkin
     Paul Pollack
@@ -356,6 +364,7 @@
     Brett Scarborough
     Roderick Schertler
     sdynet
+    SentientSupper
     Roman Sêk
     Brennan Shacklett
     ShadyAmish
@@ -389,6 +398,7 @@
     Matthew Tadd
     William Tanksley, Jr.
     Tedronai
+    tekkud
     Chris Terenzi
     Jared 'Twinge' Tinney
     Matt Titus

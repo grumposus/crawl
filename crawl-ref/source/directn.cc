@@ -23,6 +23,7 @@
 #include "colour.h"
 #include "command.h"
 #include "coordit.h"
+#include "database.h"
 #include "describe.h"
 #include "dungeon.h"
 #include "english.h"
@@ -45,6 +46,7 @@
 #include "nearby-danger.h"
 #include "output.h"
 #include "prompt.h"
+#include "religion.h"
 #include "showsymb.h"
 #include "spl-damage.h"
 #include "spl-goditem.h"
@@ -58,6 +60,7 @@
  #include "tileview.h"
  #include "tile-flags.h"
 #endif
+#include "transform.h"
 #include "traps.h"
 #include "travel.h"
 #include "viewchar.h"
@@ -102,13 +105,11 @@ static bool _blocked_ray(const coord_def &where);
 static bool _want_target_monster(const monster *mon, targ_mode_type mode,
                                  targeter* hitfunc);
 static bool _find_monster(const coord_def& where, targ_mode_type mode,
-                          bool need_path, int range, targeter *hitfunc);
+                          bool need_path, int range, targeter *hitfunc,
+                          bool find_preferred = false);
 static bool _find_monster_expl(const coord_def& where, targ_mode_type mode,
                                bool need_path, int range, targeter *hitfunc,
                                aff_type mon_aff, aff_type allowed_self_aff);
-static bool _find_shadow_step_mons(const coord_def& where, targ_mode_type mode,
-                                   bool need_path, int range,
-                                   targeter *hitfunc);
 static bool _find_object(const coord_def& where, bool need_path, int range,
                          targeter *hitfunc);
 static bool _find_autopickup_object(const coord_def& where, bool need_path,
@@ -161,6 +162,9 @@ static void _wizard_make_friendly(monster* m)
     case ATT_HOSTILE:
         m->attitude = ATT_FRIENDLY;
         m->flags |= MF_NO_REWARD;
+        break;
+    // This attitude is transient, so this should be impossible.
+    case ATT_MARIONETTE:
         break;
     }
     mons_att_changed(m);
@@ -337,7 +341,6 @@ void direction_chooser::print_key_hints() const
                 direction_hint = "Shift-Dir - straight line";
                 break;
             case DIR_TARGET:
-            case DIR_SHADOW_STEP:
             case DIR_ENFORCE_RANGE:
                 direction_hint = "Dir - move target";
                 break;
@@ -422,14 +425,14 @@ static cglyph_t _get_ray_glyph(const coord_def& pos, int colour, int glych,
 static bool _mon_exposed_in_water(const monster* mon)
 {
     return env.grid(mon->pos()) == DNGN_SHALLOW_WATER && !mon->airborne()
-           && !mon->submerged() && !cloud_at(mon->pos());
+           && !cloud_at(mon->pos());
 }
 
 static bool _mon_exposed_in_cloud(const monster* mon)
 {
     return cloud_at(mon->pos())
            && is_opaque_cloud(cloud_at(mon->pos())->type)
-           && !mon->submerged() && !mon->is_insubstantial();
+           && !mon->is_insubstantial();
 }
 
 static bool _mon_exposed(const monster* mon)
@@ -441,10 +444,13 @@ static bool _mon_exposed(const monster* mon)
 }
 
 static bool _is_target_in_range(const coord_def& where, int range,
-                                targeter *hitfunc)
+                                targeter *hitfunc, bool find_preferred = false)
 {
     if (hitfunc)
-        return hitfunc->valid_aim(where);
+    {
+        return find_preferred ? hitfunc->preferred_aim(where)
+                              : hitfunc->valid_aim(where);
+    }
     // range == -1 means that range doesn't matter.
     return range == -1 || grid_distance(you.pos(), where) <= range;
 }
@@ -642,12 +648,6 @@ static coord_def _full_describe_menu(vector<monster_info> const &list_mons,
                      << (g.ch == '<' ? "<<" : stringize_glyph(g.ch))
                      << "</" << col_string << ">) ";
 #endif
-            if (Options.monster_item_view_coordinates)
-            {
-                const coord_def relpos = mi.pos - you.pos();
-                prefix << "(" << relpos.x << ", " << -relpos.y << ") ";
-            }
-
             string str = get_monster_equipment_desc(mi, DESC_FULL, DESC_A, true);
             if (mi.dam != MDAM_OKAY)
                 str += ", " + mi.damage_desc();
@@ -655,6 +655,13 @@ static coord_def _full_describe_menu(vector<monster_info> const &list_mons,
             string consinfo = mi.constriction_description();
             if (!consinfo.empty())
                 str += ", " + consinfo;
+
+            if (Options.monster_item_view_coordinates)
+            {
+                const coord_def relpos = mi.pos - you.pos();
+                str = make_stringf("(%d, %d) %s", relpos.x, -relpos.y,
+                                   str.c_str());
+            }
 
 #ifndef USE_TILE_LOCAL
             // Wraparound if the description is longer than allowed.
@@ -1031,6 +1038,14 @@ bool direction_chooser::move_is_ok() const
                 return true; // is this too broad?
             if (you.see_cell(target()))
                 mprf(MSGCH_EXAMINE_FILTER, "There's something in the way.");
+            // XXX: Hack to let bump attack with a ranged weapon still work
+            //      when Primordial Nightfall is active. Hopefully doesn't
+            //      affect anything else?
+            else if (you.current_vision == 0 && !moves.interactive
+                     && grid_distance(you.pos(), target()) == 1)
+            {
+                return true;
+            }
             else
                 mprf(MSGCH_EXAMINE_FILTER, "You can't see that place.");
             return false;
@@ -1093,7 +1108,9 @@ bool direction_chooser::find_default_monster_target(coord_def& result) const
     const monster* mons_target = _get_current_target();
     if (mons_target != nullptr
         && _want_target_monster(mons_target, mode, hitfunc)
-        && in_range(mons_target->pos()))
+        && in_range(mons_target->pos())
+        && (!hitfunc || hitfunc->preferred_aim(mons_target->pos()))
+        && !prefer_farthest)
     {
         result = mons_target->pos();
         return true;
@@ -1109,16 +1126,26 @@ bool direction_chooser::find_default_monster_target(coord_def& result) const
     // The previous target is no good. Try to find one from scratch.
     bool success = false;
 
+    // Start our search from the player's position most of the time, unless we're
+    // looking for the farthest target, in which case start from max LoS away
+    // from the player, since we will be spiraling inward.
+    // (_find_square already defaulted to starting at the player's left)
+    result = prefer_farthest ? clamp_in_bounds(you.pos() - coord_def(LOS_RADIUS, 0))
+                             : you.pos();
+
     if (Options.simple_targeting)
     {
-        success = _find_square_wrapper(result, 1,
+        success = _find_square_wrapper(result, prefer_farthest ? -1 : 1,
                                        bind(_find_monster, placeholders::_1,
-                                            mode, needs_path, range, hitfunc),
+                                            mode, needs_path, range, hitfunc,
+                                            false),
                                        hitfunc);
     }
     else
     {
-        success = hitfunc && _find_square_wrapper(result, 1,
+        // Search for a new default target, first looking for a 'preferred' target,
+        // if applicable, and then falling back to any valid target if none are preferred.
+        success = hitfunc && _find_square_wrapper(result, prefer_farthest ? -1 : 1,
                                                   bind(_find_monster_expl,
                                                        placeholders::_1, mode,
                                                        needs_path, range,
@@ -1126,12 +1153,17 @@ bool direction_chooser::find_default_monster_target(coord_def& result) const
                                                        // First try to bizap
                                                        AFF_MULTIPLE, AFF_YES),
                                                   hitfunc)
-                  || _find_square_wrapper(result, 1,
-                                          bind(restricts == DIR_SHADOW_STEP ?
-                                               _find_shadow_step_mons :
-                                               _find_monster,
+                  || _find_square_wrapper(result, prefer_farthest ? -1 : 1,
+                                          bind(_find_monster,
                                                placeholders::_1, mode,
-                                               needs_path, range, hitfunc),
+                                               needs_path, range, hitfunc,
+                                               true),
+                                          hitfunc)
+                  || _find_square_wrapper(result, prefer_farthest ? -1 : 1,
+                                          bind(_find_monster,
+                                               placeholders::_1, mode,
+                                               needs_path, range, hitfunc,
+                                               false),
                                           hitfunc);
     }
 
@@ -1180,10 +1212,9 @@ bool direction_chooser::find_default_monster_target(coord_def& result) const
     // pretty confusing.)
     if (needs_path
         && _find_square_wrapper(result, 1,
-                                bind(restricts == DIR_SHADOW_STEP ?
-                                     _find_shadow_step_mons : _find_monster,
+                                bind(_find_monster,
                                      placeholders::_1, mode, false,
-                                     range, hitfunc),
+                                     range, hitfunc, false),
                                hitfunc))
     {
         // Special colouring in tutorial or hints mode.
@@ -1397,11 +1428,9 @@ void direction_chooser::object_cycle(int dir)
 
 void direction_chooser::monster_cycle(int dir)
 {
-    if (prefer_farthest)
-        dir = -dir; // cycle from furthest to closest
     if (_find_square_wrapper(monsfind_pos, dir,
                              bind(_find_monster, placeholders::_1, mode,
-                                  needs_path, range, hitfunc),
+                                  needs_path, range, hitfunc, false),
                              hitfunc))
     {
         set_target(monsfind_pos);
@@ -1448,17 +1477,8 @@ bool direction_chooser::select(bool allow_out_of_range, bool endpoint)
 {
     const monster* mons = monster_at(target());
 
-    if (restricts == DIR_SHADOW_STEP)
-    {
-        targeter_shadow_step &tgt =
-            *static_cast<targeter_shadow_step*>(hitfunc);
-        if (!tgt.has_additional_sites(target()))
-            return false;
-    }
-
-    // leap and shadow step never allow selecting from past the target point
+    // leap never allows selecting from past the target point
     if ((restricts == DIR_ENFORCE_RANGE
-         || restricts == DIR_SHADOW_STEP
          || !allow_out_of_range)
         && !in_range(target()))
     {
@@ -1913,10 +1933,6 @@ void direction_chooser::handle_wizard_command(command_type key_command,
 
     case CMD_TARGET_WIZARD_GIVE_ITEM:  wizard_give_monster_item(m); break;
     case CMD_TARGET_WIZARD_POLYMORPH:  wizard_polymorph_monster(m); break;
-
-    case CMD_TARGET_WIZARD_GAIN_LEVEL:
-        wizard_gain_monster_level(m);
-        break;
 
     case CMD_TARGET_WIZARD_BLESS_MONSTER:
         wizard_apply_monster_blessing(m);
@@ -2504,8 +2520,6 @@ bool direction_chooser::choose_direction()
                                        : find_default_target());
 
     objfind_pos = monsfind_pos = target();
-    if (prefer_farthest && moves.target != you.pos())
-        monster_cycle(1);
 
     // If requested, show the beam on startup.
     if (show_beam)
@@ -2651,7 +2665,7 @@ bool full_describe_square(const coord_def &c, bool cleanup)
 
     // get the real items if we are describing the player's position, so that
     // actions can work.
-    if (c == you.pos() && you.visible_igrd(c) != NON_ITEM)
+    if (you.on_current_level && c == you.pos())
         list_items = item_list_on_square(you.visible_igrd(c));
     else if (env.map_knowledge(c).item())
     {
@@ -2765,10 +2779,6 @@ static bool _mons_is_valid_target(const monster* mon, targ_mode_type mode,
     if (!mons_is_threatening(*mon) && !mons_class_is_test(mon->type))
         return false;
 
-    // Don't target submerged monsters.
-    if (mon->submerged())
-        return false;
-
     // Don't usually target unseen monsters...
     if (!mon->visible_to(&you))
     {
@@ -2801,8 +2811,6 @@ static bool _want_target_monster(const monster *mon, targ_mode_type mode,
             return true;
         return !mon->wont_attack() && !mon->neutral()
             && unpacifiable_reason(*mon).empty();
-    case TARG_BEOGH_GIFTABLE:
-        return beogh_can_gift_items_to(mon);
     case TARG_MOVABLE_OBJECT:
         return false;
     case TARG_MOBILE_MONSTER:
@@ -2816,7 +2824,8 @@ static bool _want_target_monster(const monster *mon, targ_mode_type mode,
 }
 
 static bool _find_monster(const coord_def& where, targ_mode_type mode,
-                          bool need_path, int range, targeter *hitfunc)
+                          bool need_path, int range, targeter *hitfunc,
+                          bool find_preferred)
 {
     {
         coord_def dp = grid2player(where);
@@ -2832,7 +2841,7 @@ static bool _find_monster(const coord_def& where, targ_mode_type mode,
         return true;
 
     // Don't target out of range
-    if (!_is_target_in_range(where, range, hitfunc))
+    if (!_is_target_in_range(where, range, hitfunc, find_preferred))
         return false;
 
     const monster* mon = monster_at(where);
@@ -2852,30 +2861,6 @@ static bool _find_monster(const coord_def& where, targ_mode_type mode,
         return false;
 
     return _want_target_monster(mon, mode, hitfunc);
-}
-
-static bool _find_shadow_step_mons(const coord_def& where, targ_mode_type mode,
-                                   bool need_path, int range,
-                                   targeter *hitfunc)
-{
-    {
-        coord_def dp = grid2player(where);
-        // We could pass more info here.
-        maybe_bool x = clua.callmbooleanfn("ch_target_shadow_step", "dd",
-                                           dp.x, dp.y);
-        if (x.is_bool())
-            return bool(x);
-    }
-
-    // Need a monster to attack; this checks that the monster is a valid target.
-    if (!_find_monster(where, mode, need_path, range, hitfunc))
-        return false;
-    // Can't step on yourself
-    if (where == you.pos())
-        return false;
-
-    targeter_shadow_step &tgt = *static_cast<targeter_shadow_step*>(hitfunc);
-    return tgt.has_additional_sites(where);
 }
 
 static bool _find_monster_expl(const coord_def& where, targ_mode_type mode,
@@ -3265,6 +3250,7 @@ void describe_floor()
     switch (grid)
     {
     case DNGN_FLOOR:
+    case DNGN_MUD:
         return;
 
     case DNGN_ENTER_SHOP:
@@ -3288,6 +3274,88 @@ void describe_floor()
     mprf(channel, "%s%s here.", prefix, feat.c_str());
     if (grid == DNGN_ENTER_GAUNTLET)
         mprf(MSGCH_EXAMINE, "Beware, the minotaur awaits!");
+    else if (feat_is_fountain(grid) || feat_is_food(grid))
+        _walk_on_decor(grid);
+}
+
+void _walk_on_decor(dungeon_feature_type new_grid)
+{
+    string messageLookup = "";
+    string decorLine = "";
+    int frequency = 0;
+    bool peaceful = !there_are_monsters_nearby(true, false);
+
+    if (feat_is_food(new_grid))
+    {
+        if (new_grid == DNGN_CACHE_OF_FRUIT)
+            messageLookup += "fruit cache";
+        else if (new_grid == DNGN_CACHE_OF_MEAT)
+            messageLookup += "meat cache";
+        else if (new_grid == DNGN_CACHE_OF_BAKED_GOODS)
+            messageLookup += "baked goods cache";
+
+        frequency = Options.food_snacking_frequency; // default 40%
+    }
+    else if (feat_is_fountain(new_grid))
+    {
+        messageLookup += dungeon_feature_name(new_grid);
+        frequency = Options.fountain_line_frequency; // default 40%
+    }
+
+    // Reduce the odds of flooding the message log if there's any visible
+    // threats, unless extenuating circumstances make it funny
+    // or if the player clearly always wants to see it.
+    if (!peaceful && frequency != 100 && !(you.religion == GOD_XOM)
+        && !player_in_branch(BRANCH_ZIGGURAT) && !(you.confused() == false))
+    {
+        frequency /= 4;
+    }
+
+    if (messageLookup != "" && x_chance_in_y(frequency, 100))
+    {
+        if (feat_is_fountain(new_grid))
+        {
+            // Use god lines ~75% of the time, and regular lines ~25% of the
+            // time. They'll always fall through to regular lines if nothing's
+            // written for that particular god with that particular fountain.
+            // XXX: maybe different arrangements for "generic" versus "default"?
+            if (peaceful && x_chance_in_y(3, 4))
+                decorLine = getMiscString(god_name(you.religion) + " peaceful " + messageLookup);
+
+            if (decorLine == "" && x_chance_in_y(3, 4))
+                decorLine = getMiscString(god_name(you.religion) + " " + messageLookup);
+
+            if (decorLine == "" && peaceful)
+                decorLine = getMiscString("default peaceful " + messageLookup);
+
+            if (decorLine == "" && !(new_grid == DNGN_DRY_FOUNTAIN))
+                decorLine = getMiscString("default " + messageLookup);
+        }
+        else
+        {
+            decorLine = getMiscString(get_form(you.form)->wiz_name + " " + messageLookup);
+
+            if (decorLine == "")
+                decorLine = getMiscString(species::name(you.species) + " " + messageLookup);
+
+            if (decorLine == "")
+                decorLine = getMiscString(messageLookup);
+        }
+
+        // Needed for in-line randomization.
+        decorLine = maybe_pick_random_substring(decorLine);
+
+        // XXX: Ugly, but it'd take a lot of restructuring
+        //      to follow melee_attack's use of @your_weapon@.
+        string weap = "your " + (you.weapon() ? you.weapon()->name(DESC_DBNAME).c_str()
+                                              : you.hand_name(true));
+
+        decorLine = replace_all(decorLine, "@your_weapon@", weap);
+        decorLine = replace_all(decorLine, "@your_hands@", "your " + you.hand_name(true));
+
+        if (!(decorLine == "" || decorLine == "__NONE"))
+            mprf(MSGCH_DECOR_FLAVOUR, "%s", decorLine.c_str());
+    }
 }
 
 static string _base_feature_desc(dungeon_feature_type grid, trap_type trap)
@@ -3525,6 +3593,9 @@ static string _describe_monster_weapon(const monster_info& mi, bool ident)
         desc += " wielding ";
     desc += name1;
 
+    if (mi.is(MB_ARMED))
+        desc += " (from an undying armoury)";
+
     if (!name2.empty())
     {
         desc += " and ";
@@ -3613,6 +3684,12 @@ static vector<string> _get_monster_desc_vector(const monster_info& mi)
             guile_adjust_willpower(mi.willpower()) : mi.willpower();
         descs.emplace_back(make_stringf("chance to call a sprite on attack: %d%%",
             hex_success_chance(wl, pow, 100)));
+    }
+
+    if (mi.type == MONS_ASPIRING_FLESH && mi.props.exists(PROTEAN_TARGET_KEY))
+    {
+        const monster_type mtype = (monster_type)mi.props[PROTEAN_TARGET_KEY].get_int();
+        descs.emplace_back(make_stringf("becoming %s", mons_type_name(mtype, DESC_A).c_str()));
     }
 
     if (mi.attitude == ATT_FRIENDLY)
@@ -3944,12 +4021,14 @@ static bool _print_cloud_desc(const coord_def where)
         areas.emplace_back("is lit by a halo");
     if (umbraed(where) && !haloed(where))
         areas.emplace_back("is wreathed by an umbra");
-    if (liquefied(where))
+    if (liquefied(where, true))
         areas.emplace_back("is liquefied");
     if (orb_haloed(where) || quad_haloed(where))
         areas.emplace_back("is covered in magical glow");
     if (disjunction_haloed(where))
         areas.emplace_back("is bathed in translocational energy");
+    if (is_blasphemy(where))
+        areas.emplace_back("within Yredelemnul's grip");
     if (!areas.empty())
     {
         mprf("This square %s.",

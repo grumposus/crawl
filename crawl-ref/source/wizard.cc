@@ -212,7 +212,16 @@ static void _do_wizard_command(int wiz_command)
 
     case '\\': debug_make_shop(); break;
     case '|': wizard_create_all_artefacts(true); break;
-    case CONTROL('\\'): wizard_create_all_artefacts(false); break;
+
+    case CONTROL('\\'):
+#ifdef USE_TILE_LOCAL
+    // Control-\ generates CONTROL(xxx) on console, but LC_CONTROL(xxx) on
+    // local tiles, as do all the non-letter control sequences that work on
+    // console.
+    case LC_CONTROL('\\'):
+#endif
+        wizard_create_all_artefacts(false);
+        break;
 
     case ';': wizard_list_levels(); break;
     case ':': wizard_list_branches(); break;
@@ -440,7 +449,7 @@ int list_wizard_commands(bool do_redraw_screen)
                        "<yellow>Builder debugging</yellow>\n"
                        "<w>L</w>      place a vault by name\n"
                        "<w>P</w>      create a level based on a vault\n"
-                       "<w>R</w> regenerate current level\n"
+                       "<w>R</w>      regenerate current level\n"
                        "<w>Ctrl-A</w> generate new Abyss area\n"
                        "<w>K</w>      mark all vaults as unused\n"
                        "<w>:</w>      find branches and overflow\n"

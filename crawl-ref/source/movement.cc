@@ -29,6 +29,7 @@
 #include "god-conduct.h"
 #include "god-passive.h"
 #include "items.h"
+#include "map-knowledge.h"
 #include "message.h"
 #include "mon-act.h"
 #include "mon-behv.h"
@@ -74,7 +75,7 @@ static void _swap_places(monster* mons, const coord_def &loc)
     // Friendly foxfire dissipates instead of damaging the player.
     if (mons->type == MONS_FOXFIRE)
     {
-        simple_monster_message(*mons, " dissipates!",
+        simple_monster_message(*mons, " dissipates!", false,
                                MSGCH_MONSTER_DAMAGE, MDAM_DEAD);
         monster_die(*mons, KILL_DISMISSED, NON_MONSTER, true);
         return;
@@ -149,7 +150,7 @@ static void _apply_barbs_damage(bool rampaging)
 
         // Sometimes decrease duration even when we move.
         if (one_chance_in(3))
-            extract_manticore_spikes("The barbed spikes snap loose.");
+            extract_barbs("The barbed spikes snap loose.");
         // But if that failed to end the effect, duration stays the same.
         if (you.duration[DUR_BARBS])
             you.duration[DUR_BARBS] += (rampaging ? 0 : you.time_taken);
@@ -296,8 +297,7 @@ bool cancel_confused_move(bool stationary)
                 && (stationary
                     || !(is_sanctuary(you.pos()) && is_sanctuary(mons->pos()))
                        && !fedhas_passthrough(mons))
-                && bad_attack(mons, adj, suffix, penance)
-                && mons->angered_by_attacks())
+                && bad_attack(mons, adj, suffix, penance))
             {
                 bad_mons = mons;
                 bad_suff = suffix;
@@ -699,7 +699,7 @@ static spret _rampage_forward(coord_def move)
     // * dangerous terrain/trap/cloud/exclusion prompt
     // * weapon check prompts;
     // messaging for this is handled by check_moveto().
-    if (!check_moveto(rampage_destination, noun)
+    if (attacking && !check_moveto(rampage_destination, noun)
         || attacking && !wielded_weapon_check(you.weapon(), noun + " and attack")
         || !attacking && !check_moveto(rampage_target, noun))
     {
@@ -948,12 +948,14 @@ void move_player_action(coord_def move)
 
     if (you.digging)
     {
-        if (feat_is_diggable(env.grid(targ)))
+        if (feat_is_diggable(env.grid(targ)) && env.grid(targ) != DNGN_SLIMY_WALL)
             targ_pass = true;
         else // moving or attacking ends dig
         {
             you.digging = false;
-            if (feat_is_solid(env.grid(targ)))
+            if (env.grid(targ) == DNGN_SLIMY_WALL)
+                mpr("Trying to dig through that would dissolve your mandibles.");
+            else if (feat_is_solid(env.grid(targ)))
                 mpr("You can't dig through that.");
             else
                 mpr("You retract your mandibles.");
@@ -989,7 +991,7 @@ void move_player_action(coord_def move)
 
     coord_def mon_swap_dest;
 
-    if (targ_monst && !targ_monst->submerged())
+    if (targ_monst)
     {
         if (try_to_swap && !beholder && !fmonger)
         {
@@ -1163,6 +1165,18 @@ void move_player_action(coord_def move)
             mpr("You cannot walk through the dense trees.");
         else if (!try_to_swap && env.grid(targ) == DNGN_MALIGN_GATEWAY)
             mpr("The malign portal rejects you as you step towards it.");
+        // Show the player the wall they've just bumped into, if they can't see it.
+        else if (you.current_vision == 0)
+        {
+            mpr("You feel something solid in that direction.");
+            map_cell& knowledge = env.map_knowledge(targ);
+            if (!knowledge.mapped() || knowledge.changed())
+            {
+                dungeon_feature_type newfeat = env.grid(targ);
+                knowledge.set_feature(newfeat, env.grid_colours(targ), TRAP_UNASSIGNED);
+                set_terrain_mapped(targ);
+            }
+        }
 
         stop_running();
         move.reset();

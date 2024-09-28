@@ -148,7 +148,14 @@ static void _split_ench_durations(monster* initial_slime, monster* split_off)
     for (const auto &entry : initial_slime->enchantments)
     {
         if (_should_share_ench(entry.second.ench))
+        {
             split_off->add_ench(entry.second);
+
+            // The newly split slime will also be vengeance marked, so we need
+            // to increment the total number of monsters the player has to kill
+            if (entry.second.ench == ENCH_VENGEANCE_TARGET)
+                you.duration[DUR_BEOGH_SEEKING_VENGEANCE] += 1;
+        }
     }
 }
 
@@ -906,7 +913,7 @@ bool mon_special_ability(monster* mons)
                                   : mons->type;
 
     // Slime creatures can split while out of sight.
-    if ((!mons->near_foe() || mons->asleep() || mons->submerged())
+    if ((!mons->near_foe() || mons->asleep())
          && mons->type != MONS_SLIME_CREATURE
          && mons->type != MONS_LOST_SOUL)
     {
@@ -1139,10 +1146,6 @@ bool mon_special_ability(monster* mons)
         _weeping_skull_cloud_aura(mons);
         break;
 
-    case MONS_MARTYRED_SHADE:
-        martyr_injury_bond(*mons);
-        break;
-
     default:
         break;
     }
@@ -1151,18 +1154,4 @@ bool mon_special_ability(monster* mons)
         mons->lose_energy(EUT_SPECIAL);
 
     return used;
-}
-
-void martyr_injury_bond(monster& mons)
-{
-    for (monster_near_iterator mi(&mons, LOS_NO_TRANS); mi; ++mi)
-    {
-        if (mons_aligned(&mons, *mi)
-            && !mi->has_ench(ENCH_CHARM)
-            && !mons_is_projectile(**mi)
-            && *mi != &mons)
-        {
-            mi->add_ench(mon_enchant(ENCH_INJURY_BOND, 1, &mons, INFINITE_DURATION));
-        }
-    }
 }

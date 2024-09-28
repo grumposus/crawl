@@ -56,7 +56,6 @@ struct cloud_tile_info
 
 #define BLASTMOTE_POWER_KEY "blastspark_power"
 #define BLASTMOTE_IMMUNE_KEY "blastmote_immune"
-#define MIASMA_IMMUNE_KEY "miasma_immune"
 
 cloud_struct* cloud_at(coord_def pos);
 
@@ -105,3 +104,5 @@ bool cloud_is_removed(cloud_type type);
 void start_still_winds();
 void end_still_winds();
 void surround_actor_with_cloud(const actor* a, cloud_type cloud);
+
+bool chaos_affects_actor(actor* victim, actor* source);

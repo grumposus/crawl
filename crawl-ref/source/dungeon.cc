@@ -779,6 +779,7 @@ void dgn_flush_map_memory()
     you.seen_weapon.init(0);
     you.seen_armour.init(0);
     you.seen_misc.reset();
+    you.seen_talisman.reset();
 }
 
 static void _dgn_load_colour_grid()
@@ -4118,7 +4119,6 @@ static void _builder_monsters()
         in_shoals ? DNGN_FLOOR : DNGN_UNSEEN;
 
     dprf(DIAG_DNGN, "_builder_monsters: Generating %d monsters", mon_wanted);
-    int success = 0;
     for (int i = 0; i < mon_wanted; i++)
     {
         mgen_data mg;
@@ -4150,8 +4150,7 @@ static void _builder_monsters()
         mg.flags    |= MG_PERMIT_BANDS;
         mg.map_mask |= MMT_NO_MONS;
         mg.preferred_grid_feature = preferred_grid_feature;
-        if (place_monster(mg))
-            success++;
+        place_monster(mg);
     }
 
     if (!player_in_branch(BRANCH_CRYPT)) // No water creatures in the Crypt.
@@ -4850,6 +4849,12 @@ static bool _apply_item_props(item_def &item, const item_spec &spec,
         }
     }
 
+    if (props.exists(CHAOTIC_ITEM_KEY) && is_unrandom_artefact(item)
+        && item.base_type == OBJ_WEAPONS)
+    {
+        item.flags |= ISFLAG_CHAOTIC;
+    }
+
     if (props.exists(NO_PICKUP_KEY))
         item.flags |= ISFLAG_NO_PICKUP;
 
@@ -4968,9 +4973,13 @@ int dgn_place_item(const item_spec &spec,
                 item_made = _dgn_item_corpse(spec, where);
             else
             {
+                CrawlHashTable const *fixed_props = nullptr;
+                if (spec.props.exists(FIXED_PROPS_KEY))
+                    fixed_props = &spec.props[FIXED_PROPS_KEY].get_table();
+
                 item_made = items(spec.allow_uniques, base_type,
                                   spec.sub_type, level, spec.ego, NO_AGENT,
-                                  _get_custom_name(spec));
+                                  _get_custom_name(spec), fixed_props);
 
                 if (spec.level == ISPEC_MUNDANE)
                     squash_plusses(item_made);
@@ -5068,9 +5077,13 @@ static void _dgn_give_mon_spec_items(mons_spec &mspec, monster *mon)
                 item_made = _dgn_item_corpse(spec, mon->pos());
             else
             {
+                CrawlHashTable const *fixed_props = nullptr;
+                if (spec.props.exists(FIXED_PROPS_KEY))
+                    fixed_props = &spec.props[FIXED_PROPS_KEY].get_table();
+
                 item_made = items(spec.allow_uniques, spec.base_type,
                                   spec.sub_type, item_level, spec.ego, NO_AGENT,
-                                  _get_custom_name(spec));
+                                  _get_custom_name(spec), fixed_props);
 
                 if (spec.level == ISPEC_MUNDANE)
                     squash_plusses(item_made);
@@ -5914,6 +5927,10 @@ static dungeon_feature_type _pick_an_altar()
             god = random_choose(GOD_VEHUMET, GOD_SIF_MUNA, GOD_KIKUBAAQUDGHA);
             break;
 
+       case BRANCH_SNAKE: // barding god, slow god, treasure hoard god
+            god = random_choose(GOD_OKAWARU, GOD_CHEIBRIADOS, GOD_GOZAG);
+            break;
+
         case BRANCH_SLIME:
             god = GOD_JIYVA;
             break;
@@ -5926,15 +5943,19 @@ static dungeon_feature_type _pick_an_altar()
         case BRANCH_DIS:
         case BRANCH_GEHENNA:
         case BRANCH_COCYTUS:
-        case BRANCH_TARTARUS:
-        case BRANCH_PANDEMONIUM: // particularly destructive / elemental gods
-            if (one_chance_in(3))
+        case BRANCH_TARTARUS:  // particularly destructive / elemental gods
+            if (one_chance_in(9))
             {
                 god = random_choose(GOD_KIKUBAAQUDGHA, GOD_NEMELEX_XOBEH,
                                     GOD_QAZLAL, GOD_VEHUMET);
             }
             else
                 god = GOD_MAKHLEB;
+            break;
+
+        case BRANCH_PANDEMONIUM: // DS enemy gods + the & summoner
+            god = random_choose(GOD_KIKUBAAQUDGHA, GOD_LUGONU, GOD_TROG,
+                                GOD_MAKHLEB, GOD_NEMELEX_XOBEH);
             break;
 
         default: // Any temple-valid god

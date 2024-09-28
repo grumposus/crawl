@@ -136,7 +136,7 @@ static void _init_player_illusion_properties(monsterentry *me)
     // the effects of their Necromutation form. This was 'important'
     // since Necromutation spell-users presumably also had Dispel
     // Undead available to them, but now...?!
-    if (form_changed_physiology() && me->holiness & MH_UNDEAD)
+    if (form_changes_physiology() && me->holiness & MH_UNDEAD)
         me->holiness = MH_NATURAL;
 }
 
@@ -148,14 +148,36 @@ static enchant_type _player_duration_to_mons_enchantment(duration_type dur)
 {
     switch (dur)
     {
-    case DUR_INVIS:     return ENCH_INVIS;
-    case DUR_CONF:      return ENCH_CONFUSION;
-    case DUR_PARALYSIS: return ENCH_PARALYSIS;
-    case DUR_SLOW:      return ENCH_SLOW;
-    case DUR_HASTE:     return ENCH_HASTE;
-    case DUR_MIGHT:     return ENCH_MIGHT;
-    case DUR_BERSERK:   return ENCH_BERSERK;
-    case DUR_POISONING: return ENCH_POISON;
+    case DUR_BARBS:            return ENCH_BARBS;
+    case DUR_BERSERK:          return ENCH_BERSERK;
+    case DUR_BRILLIANCE:       return ENCH_EMPOWERED_SPELLS;
+    case DUR_BLIND:            return ENCH_BLIND;
+    case DUR_CONF:             return ENCH_CONFUSION;
+    case DUR_CORROSION:        return ENCH_CORROSION;
+    case DUR_DIMENSION_ANCHOR: return ENCH_DIMENSION_ANCHOR;
+    case DUR_FIRE_VULN:        return ENCH_FIRE_VULN;
+    case DUR_FROZEN:           return ENCH_FROZEN;
+    case DUR_HASTE:            return ENCH_HASTE;
+    case DUR_INVIS:            return ENCH_INVIS;
+    case DUR_LOWERED_WL:       return ENCH_LOWERED_WL;
+    case DUR_MIGHT:            return ENCH_MIGHT;
+    case DUR_NO_MOMENTUM:      return ENCH_BOUND;
+    case DUR_PARALYSIS:        return ENCH_PARALYSIS;
+    case DUR_PETRIFYING:       return ENCH_PETRIFYING;
+    case DUR_PETRIFIED:        return ENCH_PETRIFIED;
+    case DUR_POISONING:        return ENCH_POISON;
+    case DUR_POISON_VULN:      return ENCH_POISON_VULN;
+    case DUR_RESISTANCE:       return ENCH_RESISTANCE;
+    case DUR_SAP_MAGIC:        return ENCH_SAP_MAGIC;
+    case DUR_SIGN_OF_RUIN:     return ENCH_SIGN_OF_RUIN;
+    case DUR_SLOW:             return ENCH_SLOW;
+    case DUR_STICKY_FLAME:     return ENCH_STICKY_FLAME;
+    case DUR_SWIFTNESS:        return ENCH_SWIFT;
+    case DUR_TOXIC_RADIANCE:   return ENCH_TOXIC_RADIANCE;
+    case DUR_TROGS_HAND:
+    case DUR_ENLIGHTENED:      return ENCH_STRONG_WILLED;
+    case DUR_VITRIFIED:        return ENCH_VITRIFIED;
+    case DUR_WEAK:             return ENCH_WEAK;
 
     default:            return ENCH_NONE;
     }
@@ -180,14 +202,16 @@ static void _mons_load_player_enchantments(monster* creator, monster* target)
     }
 }
 
-void mons_summon_illusion_from(monster* mons, actor *foe,
-                               spell_type spell_cast, int card_power)
+int mons_summon_illusion_from(monster* mons, actor *foe,
+                              spell_type spell_cast, int card_power, bool xom)
 {
     if (foe->is_player())
     {
         int abj = 6;
 
-        if (card_power >= 0)
+        if (xom)
+            abj = 2;
+        else if (card_power >= 0)
         {
           // card effect
           abj = 2 + random2(card_power);
@@ -207,15 +231,22 @@ void mons_summon_illusion_from(monster* mons, actor *foe,
                 get_monster_data(MONS_PLAYER_ILLUSION));
             _mons_load_player_enchantments(mons, clone);
             clone->add_ench(ENCH_PHANTOM_MIRROR);
+
+            return 1;
         }
         else if (card_power >= 0)
+        {
             mpr("You see a puff of smoke.");
+            return 0;
+        }
     }
     else
     {
         monster* mfoe = foe->as_monster();
         _mons_summon_monster_illusion(mons, mfoe);
     }
+
+    return 1;
 }
 
 bool mons_clonable(const monster* mon, bool needs_adjacent)
@@ -270,10 +301,11 @@ monster* clone_mons(const monster* orig, bool quiet, bool* obvious)
  * @param quiet         If true, suppress messages
  * @param obvious       If true, player can see the orig & cloned monster
  * @param mon_att       The attitude to set for the cloned monster
+ * @param place         If set, place it somewhere instead of near the source
  * @return              Returns the cloned monster
  */
 monster* clone_mons(const monster* orig, bool quiet, bool* obvious,
-                    mon_attitude_type mon_att)
+                    mon_attitude_type mon_att, coord_def place)
 {
     // Is there an open slot in env.mons?
     monster* mons = get_free_monster();
@@ -282,18 +314,23 @@ monster* clone_mons(const monster* orig, bool quiet, bool* obvious,
     if (!mons)
         return nullptr;
 
-    for (fair_adjacent_iterator ai(orig->pos()); ai; ++ai)
+    if (place.origin())
     {
-        if (in_bounds(*ai)
-            && !actor_at(*ai)
-            && monster_habitable_grid(orig, env.grid(*ai)))
+        for (fair_adjacent_iterator ai(orig->pos()); ai; ++ai)
         {
-            pos = *ai;
+            if (in_bounds(*ai)
+                && !actor_at(*ai)
+                && monster_habitable_grid(orig, env.grid(*ai)))
+            {
+                pos = *ai;
+            }
         }
-    }
 
-    if (!in_bounds(pos))
-        return nullptr;
+        if (!in_bounds(pos))
+            return nullptr;
+    }
+    else
+       pos = place;
 
     ASSERT(!actor_at(pos));
 
@@ -327,6 +364,13 @@ monster* clone_mons(const monster* orig, bool quiet, bool* obvious,
     // Don't display non-functional bullseye targets
     if (mons->has_ench(ENCH_BULLSEYE_TARGET))
         mons->del_ench(ENCH_BULLSEYE_TARGET);
+
+    // Remove Beogh's Touch from an apostle of Beogh may get very confused when they die
+    if (mons->has_ench(ENCH_TOUCH_OF_BEOGH))
+        mons->del_ench(ENCH_TOUCH_OF_BEOGH);
+
+    if (mons->has_ench(ENCH_VENGEANCE_TARGET))
+        you.duration[DUR_BEOGH_SEEKING_VENGEANCE] += 1;
 
     // Duplicate objects, or unequip them if they can't be duplicated.
     for (mon_inv_iterator ii(*mons); ii; ++ii)

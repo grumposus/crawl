@@ -279,11 +279,11 @@ bool feat_is_traversable_now(dungeon_feature_type grid, bool try_fallback,
             return true;
 
         // Permanently flying players can cross most hostile terrain.
-        if (grid == DNGN_DEEP_WATER || grid == DNGN_LAVA
-            || grid == DNGN_TOXIC_BOG)
-        {
+        if (grid == DNGN_DEEP_WATER || grid == DNGN_LAVA)
             return assume_flight || you.permanent_flight();
-        }
+        // Players casting Toxic Bog can safely traverse it
+        else if (grid == DNGN_TOXIC_BOG)
+            return you.duration[DUR_NOXIOUS_BOG];
     }
 
     return feat_is_traversable(grid, try_fallback);
@@ -529,7 +529,7 @@ bool is_travelsafe_square(const coord_def& c, bool ignore_hostile,
             return true;
     }
 
-    if (grid == DNGN_BINDING_SIGIL)
+    if (grid == DNGN_BINDING_SIGIL && !you.is_binding_sigil_immune())
         return false;
 
     if (!try_fallback && _feat_is_blocking_door(levelmap_cell.feat()))
@@ -1030,7 +1030,7 @@ static command_type _get_non_move_command()
     return feat_stair_direction(env.grid(you.pos()));
 }
 
-// Top-level travel control (called from input() in main.cc).
+// Top-level travel control (called indirectly from TravelDelay::handle()).
 //
 // travel() is responsible for making the individual moves that constitute
 // (interlevel) travel and explore and deciding when travel and explore
@@ -1053,14 +1053,6 @@ command_type travel()
         return CMD_NO_CMD;
     }
 
-    if (you.confused())
-    {
-        mprf("You're confused, stopping %s.",
-             you.running.runmode_name().c_str());
-        stop_running();
-        return CMD_NO_CMD;
-    }
-
     // Excluded squares are only safe if marking stairs, i.e. another level.
     if (is_excluded(you.pos()) && !is_stair_exclusion(you.pos()))
     {
@@ -1072,8 +1064,11 @@ command_type travel()
 
     if (you.running.is_explore())
     {
-        if (Options.explore_auto_rest && !you.is_sufficiently_rested())
+        if (Options.explore_auto_rest && !you.is_sufficiently_rested()
+            || you.duration[DUR_NO_MOMENTUM])
+        {
             return CMD_WAIT;
+        }
 
         // Exploring.
         if (env.grid(you.pos()) == DNGN_ENTER_SHOP
@@ -4844,7 +4839,8 @@ void explore_discoveries::found_feature(const coord_def &pos,
     }
     else if (feat == DNGN_TRANSPORTER)
     {
-        seen_tracked_feature(feat);
+        if (is_unknown_transporter(pos))
+            seen_tracked_feature(feat);
         if (ES_transporter)
         {
             for (orth_adjacent_iterator ai(pos); ai; ++ai)

@@ -32,10 +32,11 @@ using std::vector;
 #define FAKE_BLINK_KEY "fake_blink"
 #define CEREBOV_DISARMED_KEY "cerebov_disarmed"
 
+#define TENTACLE_LORD_HITS "tentacle_lord_hits_key"
+
 /// has a given hound already used up its howl?
 #define DOOM_HOUND_HOWLED_KEY "doom_hound_howled"
 #define KIKU_WRETCH_KEY "kiku_wretch"
-#define ANIMATE_DEAD_KEY "animate_dead"
 
 #define DROPPER_MID_KEY "dropper_mid"
 
@@ -80,7 +81,6 @@ public:
     monster_flags_t flags;             // bitfield of boolean flags
     xp_tracking_type xp_tracking;
 
-    unsigned int experience;
     monster_type  base_monster;        // zombie base monster, draconian colour
     union
     {
@@ -114,7 +114,8 @@ public:
     seen_context_type seen_context;    // Non-standard context for
                                        // activity_interrupt::see_monster
 
-    int damage_friendly;               // Damage taken, x2 you, x1 pets, x0 else.
+    int damage_friendly;               // Damage taken by a player-related source
+                                       // (used for XP calculations)
     int damage_total;
 
     uint32_t client_id;                // for ID of monster_info between turns
@@ -144,8 +145,6 @@ public:
     bool has_base_name() const;
 
     const monsterentry *find_monsterentry() const;
-
-    void init_experience();
 
     void mark_summoned(int longevity, bool mark_items_summoned,
                        int summon_type = 0, bool abj = true);
@@ -213,9 +212,9 @@ public:
     int energy_cost(energy_use_type et, int div = 1, int mult = 1) const;
 
     void scale_hp(int num, int den);
-    bool gain_exp(int exp, int max_levels_to_gain = 2);
 
-    void react_to_damage(const actor *oppressor, int damage, beam_type flavour);
+    void react_to_damage(const actor *oppressor, int damage, beam_type flavour,
+                         kill_method_type ktype);
 
     void apply_enchantments();
 
@@ -227,7 +226,7 @@ public:
     void set_transit(const level_id &destination);
     bool is_trap_safe(const coord_def& where) const;
     bool is_location_safe(const coord_def &place);
-    bool find_place_to_live(bool near_player = false);
+    bool find_place_to_live(bool near_player = false, bool force_near = false);
     bool find_home_near_place(const coord_def &c);
     bool find_home_near_player();
     bool find_home_anywhere();
@@ -247,6 +246,7 @@ public:
     void load_ghost_spells();
     brand_type ghost_brand() const;
     bool has_ghost_brand() const;
+    int ghost_umbra_radius() const;
 
     actor *get_foe() const;
 
@@ -259,7 +259,6 @@ public:
     bool     defined() const { return alive(); }
     bool     swimming() const override;
 
-    bool     submerged() const override;
     bool     can_drown() const;
     bool     floundering_at(const coord_def p) const;
     bool     floundering() const override;
@@ -267,13 +266,14 @@ public:
     bool     extra_balanced() const override;
     bool     can_pass_through_feat(dungeon_feature_type grid) const override;
     bool     can_burrow() const override;
+    bool     can_burrow_through(dungeon_feature_type feat) const;
     bool     is_habitable_feat(dungeon_feature_type actual_grid) const override;
     bool     shove(const char* name = "") override;
 
     size_type   body_size(size_part_type psize = PSIZE_TORSO,
                           bool base = false) const override;
     brand_type  damage_brand(int which_attack = -1) override;
-    int         damage_type(int which_attack = -1) override;
+    vorpal_damage_type damage_type(int which_attack = -1) override;
     random_var  attack_delay(const item_def *projectile = nullptr,
                              bool rescale = true) const override;
     int         has_claws(bool allow_tran = true) const override;
@@ -354,7 +354,8 @@ public:
     bool can_mutate() const override;
     bool can_safely_mutate(bool temp = true) const override;
     bool can_polymorph() const override;
-    bool can_bleed(bool allow_tran = true) const override;
+    bool has_blood(bool temp = true) const override;
+    bool has_bones(bool temp = true) const override;
     bool is_stationary() const override;
     bool malmutate(const string &/*reason*/) override;
     void corrupt();
@@ -377,6 +378,7 @@ public:
     int how_chaotic(bool check_spells_god = false) const override;
     bool is_unbreathing() const override;
     bool is_insubstantial() const override;
+    bool is_amorphous() const override;
     bool res_damnation() const override;
     int res_fire() const override;
     int res_steam() const override;
@@ -387,12 +389,13 @@ public:
     bool res_water_drowning() const override;
     bool res_sticky_flame() const override;
     int res_holy_energy() const override;
+    int res_foul_flame() const override;
     int res_negative_energy(bool intrinsic_only = false) const override;
     bool res_torment() const override;
     int res_acid() const override;
     bool res_polar_vortex() const override;
     bool res_petrify(bool /*temp*/ = true) const override;
-    int res_constrict() const override;
+    bool res_constrict() const override;
     resists_t all_resists() const;
     int willpower() const override;
     bool no_tele(bool blink = false, bool /*temp*/ = true) const override;
@@ -405,6 +408,7 @@ public:
     bool airborne() const override;
     bool is_banished() const override;
     bool is_web_immune() const override;
+    bool is_binding_sigil_immune() const override;
     bool invisible() const override;
     bool can_see_invisible() const override;
     bool visible_to(const actor *looker) const override;
@@ -456,6 +460,10 @@ public:
     int constriction_damage(constrict_type typ) const override;
 
     bool can_throw_large_rocks() const override;
+
+    bool can_be_dazzled() const override;
+    bool can_be_blinded() const override;
+
     bool can_speak();
     bool is_silenced() const;
 
@@ -463,7 +471,7 @@ public:
     int armour_class() const override;
     int gdr_perc() const override { return 0; }
     int base_evasion() const;
-    int evasion(bool ignore_helpless = false,
+    int evasion(bool ignore_temporary = false,
                 const actor* /*attacker*/ = nullptr) const override;
 
     bool poison(actor *agent, int amount = 1, bool force = false) override;
@@ -495,7 +503,7 @@ public:
 
     void put_to_sleep(actor *attacker, int power = 0, bool hibernate = false)
         override;
-    void weaken(actor *attacker, int pow) override;
+    void weaken(const actor *attacker, int pow) override;
     bool strip_willpower(actor *attacker, int dur, bool quiet = false) override;
     void check_awaken(int disturbance) override;
     int beam_resists(bolt &beam, int hurted, bool doEffects, string source = "")
@@ -513,11 +521,6 @@ public:
     int     shield_bypass_ability(int tohit) const override;
     bool    missile_repulsion() const override;
 
-    // Combat-related class methods
-    int     unadjusted_body_armour_penalty() const override { return 0; }
-    int     adjusted_body_armour_penalty(int) const override { return 0; }
-    int     adjusted_shield_penalty(int) const override { return 0; }
-
     bool is_player() const override { return false; }
     monster* as_monster() override { return this; }
     player* as_player() override { return nullptr; }
@@ -526,7 +529,6 @@ public:
 
     // Hacks, with a capital H.
     void check_speed();
-    void upgrade_type(monster_type after, bool adjust_hd, bool adjust_hp);
 
     string describe_enchantments() const;
 
@@ -537,7 +539,7 @@ public:
 
     void bind_melee_flags();
     void calc_speed();
-    bool attempt_escape(int attempts = 1);
+    bool attempt_escape() override;
     void struggle_against_net();
     void catch_breath();
     bool has_usable_tentacle() const override;
@@ -596,8 +598,6 @@ private:
 
     void init_with(const monster& mons);
 
-    bool level_up();
-    bool level_up_change();
     int armour_bonus(const item_def &item) const;
 
     void id_if_worn(mon_inv_type mslot, object_class_type base_type,

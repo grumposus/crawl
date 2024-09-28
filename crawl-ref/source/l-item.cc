@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "adjust.h"
+#include "acquire.h"
 #include "artefact.h"
 #include "art-enum.h"
 #include "cluautil.h"
@@ -217,8 +218,8 @@ static int l_item_do_remove(lua_State *ls)
     }
 
     bool result = false;
-    if (eq == EQ_WEAPON)
-        result = wield_weapon(SLOT_BARE_HANDS);
+    if (is_weapon(*item))
+        result = unwield_weapon(*item);
     else if (eq >= EQ_FIRST_JEWELLERY && eq <= EQ_LAST_JEWELLERY)
         result = remove_ring(item->link);
     else
@@ -662,6 +663,19 @@ IDEF(is_melded)
         return 0;
 
     lua_pushboolean(ls, item_is_melded(*item));
+
+    return 1;
+}
+
+/*** Is this item a weapon?
+ * @field is_weapon boolean
+ */
+IDEF(is_weapon)
+{
+    if (!item || !item->defined())
+        return 0;
+
+    lua_pushboolean(ls, is_weapon(*item));
 
     return 1;
 }
@@ -1588,6 +1602,11 @@ static int l_item_shopping_list(lua_State *ls)
 
 /*** See the items offered by acquirement.
  * Only works when the acquirement menu is active.
+ * @tparam int An integer indicating the type of acquirement:
+ *                 1: The normal acquirement menu.
+ *                 2: Okawaru weapon gift acquirement.
+ *                 3: Okawaru armour gift acquirement.
+ *                 4: Coglin gizmo acquirement.
  * @treturn array|nil An array of @{Item} objects or nil if not acquiring.
  * @function acquirement_items
  */
@@ -1602,6 +1621,8 @@ static int l_item_acquirement_items(lua_State *ls)
         acquire_key = OKAWARU_WEAPONS_KEY;
     else if (acquire_type == 3)
         acquire_key = OKAWARU_ARMOUR_KEY;
+    else if (acquire_type == 4)
+        acquire_key = COGLIN_GIZMO_KEY;
     else
         return 0;
 
@@ -1758,6 +1779,7 @@ static ItemAccessor item_attrs[] =
     { "is_throwable",      l_item_is_throwable },
     { "is_xp_evoker",      l_item_is_xp_evoker },
     { "dropped",           l_item_dropped },
+    { "is_weapon",         l_item_is_weapon },
     { "is_melded",         l_item_is_melded },
     { "is_corpse",         l_item_is_corpse },
     { "is_useless",        l_item_is_useless },

@@ -14,7 +14,7 @@
 # You can additionally use the following tags:
 #
 # vaults_orient_n vaults_orient_s vaults_orient_e vaults_orient_w
-# no_windows preserve_wall
+# no_windows no_wall_fixup
 #
 # vaults_orient_x: controls the entry points to the subvault.
 # A subvault using vaults_orient_n will always be entered from the north side,
@@ -22,17 +22,12 @@
 #
 # no_windows: prevents the layout from creating windows into the subvault.
 #
-# preserve_wall: prevents the layout from changing rock into the same wall type
+# no_wall_fixup: prevents the layout from changing rock into the same wall type
 # as the rest of the floor.
 #
 ################################################################################
 
 : crawl_require('dlua/vault.lua')
-
-#
-#  st_box_setup
-#
-#  This is the header for st's "greater box" vaults.
 
 {{
 function init_protected_by_tso(e)
@@ -52,6 +47,7 @@ function init_protected_by_tso(e)
   e.tile('G = dngn_statue_angel')
 end
 
+-- This is the header for st's "greater box" vaults.
 function st_box_setup(e)
   e.tags("no_item_gen")
   e.subst("% = %%%**|$")
@@ -721,9 +717,16 @@ ENDMAP
 
 NAME:   dpeg_vaults_monster_doublerow
 TAGS:   vaults_hard
-WEIGHT: 1
-SUBST:  0 : 0000000z, z : z., 0 = 0009..
-KMONS:  z = human skeleton
+WEIGHT: 3
+MONS:   vault guard skeleton, necromancer, phantasmal warrior
+: local d = you.depth() + 1
+: mons("centaur warrior skeleton w:" .. 9 - d ..
+:      " / vault warden skeleton w:" .. d)
+: mons("necromancer w:" .. 7 - d .. " / deep elf death mage w:" .. d)
+: mons("phantasmal warrior w:" .. 7 - d .. " / flayed ghost w:" .. d)
+SUBST:  0 : 0000z
+NSUBST: 0 = 1:0 / 3:% / * = 0009..
+NSUBST: z = 2:1 / 2:2 / 1:3 / 3:% / * = 11113$..
 MAP
 xxxxxxxxxxxxxxxxxxxxxxxxxx
 xx00xx00xx00xx00xx00xx00xx
@@ -849,15 +852,17 @@ MAP
      .......
 ENDMAP
 
-NAME: nicolae_vaults_statue_guard
-TAGS: vaults_hard vaults_orient_e
-MONS: obsidian statue / orange crystal statue
-KPROP: % = no_tele_into
+NAME:  nicolae_vaults_statue_guard
+TAGS:  vaults_hard vaults_orient_e
+MONS:  obsidian statue / orange crystal statue
+KMONS: 2 = ironbound preserver / entropy weaver
+KITEM: 2 = %, %, $
 SUBST: % = %%%*
+KPROP: %*2 = no_tele_into
 MAP
 xxxx......xx
 x%%x....x..x
-x%%1....m.(.
+x%21....m.(.
 x%%x....x..x
 xxxx......xx
 ENDMAP
@@ -1152,10 +1157,9 @@ ENDMAP
 
 ####
 
-NAME: lightli_bank_vault
-TAGS: vaults_hard vaults_orient_s
-MONS: vault guard
-KMONS: 2 = vault guard
+NAME:  lightli_bank_vault
+TAGS:  vaults_hard vaults_orient_s
+KMONS: 12 = vault guard
 KMONS: 3 = vault warden
 KITEM: 23 = $
 KFEAT: ^ = alarm trap
@@ -1185,14 +1189,14 @@ KITEM:  12 = gold
 KFEAT:  B = altar_gozag
 KFEAT:  D = granite_statue
 KFEAT:  G = metal_statue
+KFEAT:  _ = antiques shop name:Gozag greed:100 /\
+            antique weapon shop name:Gozag greed:100 /\
+            antique armour shop name:Gozag greed:100
 TILE:   GD = dngn_golden_statue
 : set_feature_name("metal_statue", "golden statue")
 COLOUR: cGD = yellow
 FTILE:  $|B}+nc12-D = floor_limestone
 FTILE:  " = floor_hall
-KFEAT:  _ = antiques shop name:Gozag greed:100 /\
-            antique weapon shop name:Gozag greed:100 /\
-            antique armour shop name:Gozag greed:100
 MAP
 ...............
 .G.""c+++c"".G.
@@ -1258,7 +1262,7 @@ NAME: nicolae_vaults_holding_cells
 TAGS: vaults_hard
 WEIGHT: 5
 KMONS: P = human ; nothing / orc ; nothing / elf ; nothing / troll ; nothing / \
-       centaur ; nothing / kobold ; nothing
+           centaur ; nothing / kobold ; nothing
 KFEAT: g = iron_grate
 KFEAT: ^ = alarm trap
 KMONS: 1 = vault guard
@@ -2054,6 +2058,64 @@ ENDMAP
 
 ####
 
+
+##############################################################################
+# The Constructs Gauntlet (by Mu, modernized by HangedMan)
+#
+# Each room is progressively more challenging; both the constructs, and their
+# creators.
+NAME:   constructs_gauntlet_mu_hangedman
+TAGS:   no_monster_gen no_item_gen no_pool_fixup no_descent
+TAGS:   vaults_orient_w vaults_hard
+DEPTH:  Vaults, !Vaults:$
+ORIENT: east
+MONS:   gargoyle, peacekeeper, thermic dynamo
+MONS:   dancing weapon, crystal guardian, war gargoyle
+KMONS:  A = arcanist
+KMONS:  B = deep elf pyromancer
+KMONS:  C = deep elf zephyrmancer
+KMONS:  D = deep elf annihilator
+KMONS:  E = lich
+KMONS:  F = ancient lich / Boris w:2, ancient lich / dread lich
+KFEAT:  S = metal_statue
+KFEAT:  yz = .
+COLOUR: y = yellow
+COLOUR: z = lightblue
+COLOUR: S = earth
+FTILE:  y = floor_rough_red
+FTILE:  z = floor_rough_blue
+TILE:   S = earthen_conduit
+MARKER: y = lua:fog_machine { \
+                pow_max = 10, delay_min = 10, delay_max = 40, \
+                size = 4, size_buildup_amnt = 1, \
+                size_buildup_time = 25, cloud_type = "flame" }
+MARKER: z = lua:fog_machine { \
+                pow_max = 10, delay_min = 10, delay_max = 40, \
+                size = 4, size_buildup_amnt = 1, \
+                size_buildup_time = 25, cloud_type = "freezing vapour" }
+:   set_feature_name("metal_statue", "earthen conduit")
+MAP
+ c......+.....cc......+....$c
+ cycccccc.....cczcccccc...6$c
+ c.....cc*.E5.cc.....cc..F.$S
+ cccccycc|.5..cccccczcc.6.>$c
+ c.....cc*$$..+......cc|||||c
+ c.cccccccccccccccccccccccccc
+ c+cccccccccccccccccccccccccc
+ c.....cllllllcc%$$..cwwwwwwc
+ c...4.clcccclcc$>.3.cwccccwc
+ S..D..+.cllllcc$3C..+.cwwwwc
+ c%4...ccclccccc..3..cccwcccc
+ c$$$%%ccclllll+.....cccwwwwc
+ ccccccccccccccccccccccccccwc
+ cccccccccccccccccccccccccc+c
+.cG.....+...$$ccWWWWWW+.....c
+.c.cccccc..1.$ccWcccccc...2.c
+.c....Gcc..A..ccWWWWWWc..B..G
+.ccccc.cc..1..cccccccWc.2.1$c
+.+.....cc.....+WWWWWWWc...$%c
+ENDMAP
+
 NAME:   dpeg_vaults_hating_casters
 TAGS:   vaults_hard
 MONS:   ghost moth
@@ -2081,11 +2143,16 @@ TAGS:   no_monster_gen no_trap_gen vaults_hard orient_s
 DEPTH:  Vaults, !Vaults:$
 MONS:   ogre mage, ironbound thunderhulk, dire elephant
 KMONS:  B = bush
+KFEAT:  g = metal_statue
 SUBST:  * = **%
 NSUBST: 1 = 1:1 / 1:1. / 1:2 / 1:2. / *:., 3 = 2:3 / 3 = 3. / .
+COLOUR: g = mist
+TILE:   g = dngn_mystic_cage
+TILE:   G = dngn_statue_elephant
 MARKER: F = lua:fog_machine { cloud_type = "flame", pow_min = 100, \
                               pow_max = 100, delay = 10, size = 1, \
                               walk_dist = 0, excl_rad = 0 }
+: set_feature_name("metal_statue", "mystic cage")
 MAP
   xxxxxx
   xBxxBx  xxxxxx
@@ -2094,12 +2161,12 @@ MAP
   xB.3B.3...1.1x
 xxx.3..3.....1.x
 xB...33........x
-x.......I..I...x
-xxB...I......I.x
+x.......G..G...x
+xxB...g......g.x
  xxxx....FF....x
     x....FF....x
-    x.I......I.x
-    x...I..I...x
+    x.g......g.x
+    x...G..G...x
      ...........
 ENDMAP
 
@@ -2131,8 +2198,13 @@ ENDMAP
 NAME:   nicolae_vaults_loss_of_containment
 TAGS:   vaults_hard
 KMONS:  S = glowing shapeshifter
-NSUBST: ' = . / xxx., S = 3=S / S..
+ITEM:   large rock q:1
+KFEAT:  G = metal_statue
+NSUBST: ' = 1:d / 2:Gx / * = xxxd, S = 3:S / S..
 SUBST:  - = x.
+COLOUR: G = mist
+TILE:   G = dngn_mystic_cage
+: set_feature_name("metal_statue", "mystic cage")
 MAP
 ...........
 .---.S.---.
@@ -2152,7 +2224,7 @@ TAGS:    vaults_hard
 KITEM:   O = * / | w:3
 KMONS:   O = slime creature w:40 / glowing orange brain / great orb of eyes / \
              large slime creature / very large slime creature w:5 / \
-             quicksilver ooze w:5
+             void ooze w:5
 KMASK:   O = no_trap_gen
 KPROP:   O = no_tele_into
 SHUFFLE: xn
@@ -2209,4 +2281,73 @@ xxx...x..px+x
 ..x+x...xxx..
 .p..n.p.n**P.
 ....n...n**|.
+ENDMAP
+
+NAME:    regret_index_vaults_magi_blasting
+TAGS:    vaults_orient_n vaults_orient_w
+NSUBST:  1 = 2:1 / 1:. / * = 11.
+SHUFFLE: ABCDEF, +-
+SUBST:   AB = x, C : xx., D : x.., EF = ., - : +x, + : +++.
+NSUBST:  12 = 2:.
+: index_vaults_room_themes(_G, "magic", true)
+MAP
+...
+...xxxxxxxxxxxx
+.............1xxx
+ x.b...A....B...
+ x..x....xx.....2
+ x...b.xxxxxx1.C.
+ x....xx...3xx....
+ x.A.xx4.....xx.D.
+ x...x...be2..-...
+ x..xx..bbcd..xx..
+ x..xx..ecbb..xx..
+ x...x3.2db...+...
+ x.B.xx.....1xx.E.
+ x1..1xx....xx...d
+ xx....x-xx+x....
+  x..C...xx.....d
+  x 2..D....E..d
+      .......d
+ENDMAP
+
+NAME:    regret_index_vaults_faire_storage
+TAGS:    patrolling vaults_orient_w vaults_orient_s
+SHUFFLE: ABCDE
+SUBST:   A : Iv, B : v., C : v., DE = .,  m : m., * = %**
+: index_vaults_room_themes(_G, "icebox", true)
+MAP
+    vvvv*....D.......
+ vvvv*e..C...2..I4I..
+ v*d........vvv.vvv.A
+ v...1..I1I.I2I..m...
+ vB.vvv.vvv.....I3I..
+ v..I1I..m..vvv.vvv.B
+ v......I1I.I2I..3...
+.vA.vvv.vvv........d*
+.+..I1I..1...C..e*vvv
+.+.......D....*vvvv
+.+++vvvvvvvvvvvv
+.....
+ENDMAP
+
+NAME:    regret_index_vaults_park_twin
+TAGS:    patrolling vaults_orient_e vaults_orient_s
+SHUFFLE: ABCDE, Ss, +-
+SUBST:   AB = x, C : x., DE = ., s = `, F : F`, - : +x, | = |**%
+: index_vaults_room_themes(_G, "garden", true)
+MAP
+     xx1123
+    xx`...12x
+   pFxs`.C.|x
+  pw`xSs.D.|x
+ xF`S``...d1x
+xxxx`xn+-xxxx
+x`sS`n3......
+1.`s.+.T...A.
+1....-..2B...
+2.CD.x..B
+31..dx.A.
+ 2||1x...
+ xxxxx...
 ENDMAP

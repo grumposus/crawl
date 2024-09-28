@@ -28,6 +28,7 @@
 #include "tile-env.h"
 #include "english.h"
 #include "files.h"
+#include "ghost.h"
 #include "initfile.h"
 #include "item-prop.h"
 #include "item-status-flag-type.h"
@@ -1424,6 +1425,16 @@ map_corner_t map_lines::merge_subvault(const coord_def &mtl,
 
             // Set keyspec index for this subvault.
             (*overlay)(x, y).keyspec_idx = idx;
+
+            // Apply kprops to this glyph from subvault tags
+            for (const auto &tag : vmap.get_tags_unsorted())
+            {
+                const feature_property_type prop = str_to_fprop(tag);
+                if (prop == FPROP_NONE)
+                    continue;
+
+                (*overlay)(x, y).property |= prop;
+            }
         }
 
     dprf(DIAG_DNGN, "Merged subvault '%s' at %d,%d x %d,%d",
@@ -3972,6 +3983,18 @@ mons_list::mons_spec_slot mons_list::parse_mons_spec(string spec)
 
         mspec.abjuration_duration = dur;
 
+        // Orc apostle power and band power
+        int pow = strip_number_tag(mon_str, "pow:");
+        if (pow != TAG_UNFOUND)
+            mspec.props[APOSTLE_POWER_KEY] = pow;
+        int band_pow = strip_number_tag(mon_str, "bandpow:");
+        if (band_pow != TAG_UNFOUND)
+        {
+            if (pow != TAG_UNFOUND)
+                band_pow = pow;
+            mspec.props[APOSTLE_BAND_POWER_KEY] = band_pow;
+        }
+
         string shifter_name = replace_all_of(strip_tag_prefix(mon_str, "shifter:"), "_", " ");
 
         if (!shifter_name.empty())
@@ -4203,6 +4226,7 @@ mons_list::mons_spec_slot mons_list::parse_mons_spec(string spec)
             MAYBE_COPY(MUTANT_BEAST_FACETS);
             MAYBE_COPY(MGEN_BLOB_SIZE);
             MAYBE_COPY(MGEN_NUM_HEADS);
+            MAYBE_COPY(APOSTLE_TYPE_KEY);
 #undef MAYBE_COPY
         }
 
@@ -4649,6 +4673,25 @@ mons_spec mons_list::mons_by_name(string name) const
 
     if (ends_with(name, "-shaped pillar of salt"))
         return get_salt_spec(name);
+
+    if (ends_with(name, " apostle"))
+    {
+        mons_spec spec = MONS_ORC_APOSTLE;
+        const auto m_index = name.find(" apostle");
+        const string trimmed = name.substr(0, m_index);
+        vector<string> segments = split_string(" ", trimmed);
+
+        // No subtype specified
+        if (segments.size() < 2)
+            return spec;
+
+        if (segments.size() > 2 || lowercase(segments[0]) != "orc")
+            return MONS_PROGRAM_BUG; // non-matching formating
+
+        spec.props[APOSTLE_TYPE_KEY] = apostle_type_by_name(segments[1]);
+
+        return spec;
+    }
 
     const auto m_index = name.find(" mutant beast");
     if (m_index != string::npos)
@@ -5257,6 +5300,8 @@ bool item_list::parse_single_spec(item_spec& result, string s)
         result.props[UNOBTAINABLE_KEY] = true;
     if (strip_tag(s, "no_exclude"))
         result.props[NO_EXCLUDE_KEY] = true;
+    if (strip_tag(s, "chaotic"))
+        result.props[CHAOTIC_ITEM_KEY] = true;
 
     const int mimic = strip_number_tag(s, "mimic:");
     if (mimic != TAG_UNFOUND)
@@ -5288,6 +5333,54 @@ bool item_list::parse_single_spec(item_spec& result, string s)
     }
     else
         result.props[PLUS_KEY].get_int() = plus;
+
+    string artprops = strip_tag_prefix(s, "artprops:");
+    if (!artprops.empty())
+    {
+        auto &fixed_artp = result.props[FIXED_PROPS_KEY].get_table();
+        vector<string> prop_list = split_string("&", artprops);
+        for (auto prop_def : prop_list)
+        {
+            vector<string> prop_parts = split_string(":", prop_def, true,
+                    false, 1);
+
+            const auto prop = artp_type_from_name(prop_parts[0]);
+            if (prop == ARTP_NUM_PROPERTIES)
+            {
+                error = make_stringf("Unknown artefact property: %s",
+                        prop_parts[0].c_str());
+                return false;
+            }
+
+            int val = 1;
+            if (prop_parts.size() == 2 && !parse_int(prop_parts[1].c_str(), val))
+            {
+                error = make_stringf("Bad artefact property value: %s",
+                        prop_parts[1].c_str());
+                return false;
+            }
+
+            if (prop == ARTP_BRAND)
+            {
+                error = make_stringf("Item brand can only be set with the "
+                        "'ego:' tag.");
+                return false;
+            }
+
+            const string prop_name = artp_name(prop);
+            if (!artp_value_is_valid(prop, val))
+            {
+                error = make_stringf("Bad value for artefact property %s: %d",
+                        prop_name.c_str(), val);
+                return false;
+            }
+
+            fixed_artp[prop_name] = val;
+        }
+
+        // Setting fixed properties always make the item randart.
+        result.level = ISPEC_RANDART;
+    }
 
     if (strip_tag(s, "no_uniq"))
         result.allow_uniques = 0;
@@ -5613,6 +5706,12 @@ void item_list::parse_random_by_class(string c, item_spec &spec)
         spec.sub_type = NUM_JEWELLERY;
         return;
     }
+    if (c == "hex wand")
+    {
+        spec.base_type = OBJ_WANDS;
+        spec.sub_type = item_for_set(ITEM_SET_HEX_WANDS);
+        return;
+    }
     if (c == "beam wand")
     {
         spec.base_type = OBJ_WANDS;
@@ -5643,6 +5742,13 @@ void item_list::parse_random_by_class(string c, item_spec &spec)
     {
         spec.base_type = OBJ_MISCELLANY;
         spec.sub_type = item_for_set(ITEM_SET_ALLY_MISCELLANY);
+        return;
+    }
+
+    if (c == "control misc")
+    {
+        spec.base_type = OBJ_MISCELLANY;
+        spec.sub_type = item_for_set(ITEM_SET_CONTROL_MISCELLANY);
         return;
     }
 

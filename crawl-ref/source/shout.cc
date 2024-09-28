@@ -11,6 +11,7 @@
 
 #include "act-iter.h"
 #include "areas.h"
+#include "art-enum.h"
 #include "artefact.h"
 #include "branch.h"
 #include "database.h"
@@ -19,6 +20,7 @@
 #include "env.h"
 #include "exercise.h"
 #include "ghost.h"
+#include "god-passive.h"
 #include "hints.h"
 #include "item-status-flag-type.h"
 #include "jobs.h"
@@ -135,7 +137,7 @@ bool monster_attempt_shout(monster &mon)
         return false;
     }
 
-    monster_shout(&mon, shout);
+    monster_shout(mon, shout);
     return true;
 }
 
@@ -144,36 +146,36 @@ bool monster_attempt_shout(monster &mon)
  * Have a monster perform a specific shout.
  *
  * @param mons      The monster in question.
- *                  TODO: use a reference, not a pointer
  * @param shout    The shout_type to use.
  */
-void monster_shout(monster* mons, int shout)
+void monster_shout(monster &mons, int shout)
 {
     shout_type s_type = static_cast<shout_type>(shout);
-    mon_acting mact(mons);
+    mon_acting mact(&mons);
 
     // less specific, more specific.
     const string default_msg_key
-        = mons->type == MONS_PLAYER_GHOST ?
+        = mons.type == MONS_PLAYER_GHOST ?
                  "player ghost" :
                  lookup(default_msg_keys, s_type, "__BUGGY");
-    const string key = _shout_key(*mons);
+    const string key = _shout_key(mons);
 
     // Now that we have the message key, get a random verb and noise level
     // for pandemonium lords.
     if (s_type == S_DEMON_TAUNT)
-        s_type = mons_shouts(mons->type, true);
+        s_type = mons_shouts(mons.type, true);
 
     // Tries to find an entry for "name seen" or "name unseen",
     // and if no such entry exists then looks simply for "name".
-    const string suffix = you.can_see(*mons) ? " seen" : " unseen";
+    const bool seen = you.can_see(mons);
+    const string suffix = seen ? " seen" : " unseen";
     string message = getShoutString(key, suffix);
 
     if (message == "__DEFAULT" || message == "__NEXT")
         message = getShoutString(default_msg_key, suffix);
     else if (message.empty())
     {
-        char mchar = mons_base_char(mons->type);
+        char mchar = mons_base_char(mons.type);
 
         // See if there's a shout for all monsters using the
         // same glyph/symbol
@@ -223,45 +225,26 @@ void monster_shout(monster* mons, int shout)
 
         strip_channel_prefix(message, channel);
 
-        // Monster must come up from being submerged if it wants to shout.
-        // XXX: this code is probably unreachable now?
-        if (mons->submerged())
-        {
-            if (!mons->del_ench(ENCH_SUBMERGED))
-            {
-                // Couldn't unsubmerge.
-                return;
-            }
-
-            if (you.can_see(*mons))
-            {
-                mons->seen_context = SC_FISH_SURFACES;
-
-                // Give interrupt message before shout message.
-                handle_seen_interrupt(mons);
-            }
-        }
-
-        if (channel != MSGCH_TALK_VISUAL || you.can_see(*mons))
+        if (seen)
         {
             // Otherwise it can move away with no feedback.
-            if (you.can_see(*mons))
-            {
-                if (!(mons->flags & MF_WAS_IN_VIEW))
-                    handle_seen_interrupt(mons);
-                seen_monster(mons);
-            }
+            if (!(mons.flags & MF_WAS_IN_VIEW))
+                handle_seen_interrupt(&mons);
+            seen_monster(&mons);
+        }
 
-            message = do_mon_str_replacements(message, *mons, s_type);
+        if (channel != MSGCH_TALK_VISUAL || seen)
+        {
+            message = do_mon_str_replacements(message, mons, s_type);
             msg::streams(channel) << message << endl;
         }
     }
 
     const int  noise_level = get_shout_noise_level(s_type);
-    const bool heard       = noisy(noise_level, mons->pos(), mons->mid);
+    const bool heard       = noisy(noise_level, mons.pos(), mons.mid);
 
-    if (crawl_state.game_is_hints() && (heard || you.can_see(*mons)))
-        learned_something_new(HINT_MONSTER_SHOUT, mons->pos());
+    if (crawl_state.game_is_hints() && (heard || you.can_see(mons)))
+        learned_something_new(HINT_MONSTER_SHOUT, mons.pos());
 }
 
 bool check_awaken(monster* mons, int stealth)
@@ -419,21 +402,17 @@ void item_noise(const item_def &item, actor &act, string msg, int loudness)
 }
 
 // TODO: Let artefacts besides weapons generate noise.
-void noisy_equipment()
+void noisy_equipment(const item_def &weapon)
 {
     if (silenced(you.pos()) || !one_chance_in(20))
         return;
 
     string msg;
 
-    const item_def* weapon = you.weapon();
-    if (!weapon)
-        return;
-
-    if (is_unrandom_artefact(*weapon))
+    if (is_unrandom_artefact(weapon))
     {
-        string name = weapon->name(DESC_PLAIN, false, true, false, false,
-                                   ISFLAG_IDENT_MASK);
+        string name = weapon.name(DESC_PLAIN, false, true, false, false,
+                                  ISFLAG_IDENT_MASK);
         msg = getSpeakString(name);
         if (msg == "NONE")
             return;
@@ -442,7 +421,7 @@ void noisy_equipment()
     if (msg.empty())
         msg = getSpeakString("noisy weapon");
 
-    item_noise(*weapon, you, msg, 20);
+    item_noise(weapon, you, msg, 20);
 }
 
 // Berserking monsters cannot be ordered around.
@@ -484,13 +463,14 @@ static void _set_allies_patrol_point(bool clear = false)
             mi->behaviour = BEH_WANDER;
         else
             mi->behaviour = BEH_SEEK;
+        mi->travel_path.clear();
     }
 }
 
 static void _set_allies_withdraw(const coord_def &target)
 {
     coord_def delta = target - you.pos();
-    float mult = float(LOS_DEFAULT_RANGE * 2) / (float)max(abs(delta.x), abs(delta.y));
+    float mult = float(LOS_DEFAULT_RANGE * 3) / (float)max(abs(delta.x), abs(delta.y));
     coord_def rally_point = clamp_in_bounds(coord_def(delta.x * mult, delta.y * mult) + you.pos());
 
     for (monster_near_iterator mi(you.pos()); mi; ++mi)
@@ -505,8 +485,6 @@ static void _set_allies_withdraw(const coord_def &target)
         mi->foe = MHITNOT;
 
         mi->props.erase(LAST_POS_KEY);
-        mi->props.erase(IDLE_POINT_KEY);
-        mi->props.erase(IDLE_DEADLINE_KEY);
         mi->props.erase(BLOCKED_DEADLINE_KEY);
     }
 }
@@ -594,7 +572,6 @@ static bool _issue_order(int keyn, int &mons_targd)
                 mpr("Stop fighting!");
             break;
 
-        case 'w':
         case 'g':
             mpr("Guard this area!");
             mons_targd = MHITNOT;
@@ -759,8 +736,8 @@ void issue_orders()
 
     you.turn_is_over = true;
     you.pet_target = mons_targd;
-    // Allow patrolling for "Stop fighting!" and "Wait here!"
-    _set_friendly_foes(keyn == 's' || keyn == 'w');
+    // Allow patrolling for "Stop fighting!"
+    _set_friendly_foes(keyn == 's');
 
     if (mons_targd != MHITNOT && mons_targd != MHITYOU)
     {
@@ -855,8 +832,14 @@ bool noisy(int original_loudness, const coord_def& where,
         ambient < 0 ? original_loudness + random2avg(abs(ambient), 3)
                     : original_loudness - random2avg(abs(ambient), 3);
 
-    const int adj_loudness = you.has_mutation(MUT_NOISE_DAMPENING)
-                && you.see_cell(where) ? div_rand_round(loudness, 2) : loudness;
+    int adj_loudness = loudness;
+    if (you.see_cell(where))
+    {
+        if (have_passive(passive_t::dampen_noise))
+            adj_loudness = div_rand_round(adj_loudness, 2);
+        if (player_equip_unrand(UNRAND_THIEF))
+            adj_loudness = div_rand_round(adj_loudness, 2);
+    }
 
     dprf(DIAG_NOISE, "Noise %d (orig: %d; ambient: %d) at pos(%d,%d)",
          adj_loudness, original_loudness, ambient, where.x, where.y);

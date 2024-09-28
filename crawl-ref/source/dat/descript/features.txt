@@ -185,8 +185,7 @@ able to keep their balance, move at a normal speed, and avoid fumbling.
 %%%%
 Some mud
 
-A thick layer of gritty mud.
-<liquefied>
+A thick layer of gritty mud. [[liquefied]]
 %%%%
 The open sea
 
@@ -344,7 +343,7 @@ a monster within its confines.
 %%%%
 A dry fountain
 
-A dried-up fountain that has seen better days.
+A dried-up decorative fountain that has seen better days.
 %%%%
 A fountain of clear blue water
 
@@ -354,9 +353,34 @@ A fountain of blood
 
 A decorative fountain, spurting with foul-looking blood.
 %%%%
+A fountain of eyes
+
+A decorative fountain, bubbling over with listless and unmoving eyes.
+%%%%
 A fountain of sparkling water
 
-A decorative fountain, flowing with brightly sparkling water.
+A decorative fountain, flowing with brightly sparkling, faintly magic water.
+%%%%
+A cache of baked goods
+
+A hoard of breadstuffs, baked and fried from minor divine gifts of flour and
+growth cultures, granted extended shelflife through sacred succour. You already
+carry as much food as you will ever need for this journey, but a light snack
+shouldn't hurt.
+%%%%
+A cache of fruit
+
+A pile of assorted fruit, ranging from common dungeon staples like chokos and
+snozzcumbers, to rarer treats such as apples and oranges. You already carry as
+much food as you will ever need for this journey, but the occasional nibble
+wouldn't hurt.
+%%%%
+A cache of meat
+
+A stash of preserved meats of varied origins and preparations: strips of jerky,
+lumpy smoked sausages, and indeterminate protein rations. You already carry as
+much food as you will ever need for this journey, but this could offer the rare
+chance to try out yak...
 %%%%
 A runelight
 
@@ -379,6 +403,11 @@ A one-way staircase leading up
 A cursed staircase leading up, imbued with magic to prevent any return back
 down the stairs. Adventurers taking this passage will need to find a return
 stairway somewhere else on the level where they arrive.
+%%%%
+The orb dais
+
+A raised pedestal upon which rests the fabled Orb of Zot. More ancient than even
+the dungeon itself, it cannot be destroyed or transformed by any means.
 %%%%
 ########################################################################
 ### Branch entrances and exits
@@ -565,26 +594,33 @@ this location to return back through the transporter.
 ########################################################################
 An open door
 
-An open wooden door. If reopened by a monster, it has a chance of breaking.
+An open wooden door. If closed again, all monsters that can wield equipment,
+and some of them that can't, could open it again. If it is closed and reopened
+by a monster that is aware of you, it has a chance of breaking.
 %%%%
 A closed door
 
-A closed wooden door. If opened by a monster, it has a chance of breaking.
+A closed wooden door. All monsters that can wield equipment, and some of them
+that can't, may open it again. If it is opened by a monster while it is aware
+of you, it has a chance of breaking.
 %%%%
 A broken door
 
-A disappointingly poorly maintained wooden door. It'd take nothing short of magic
-to get this properly closed again.
+A disappointingly poorly maintained wooden door. It'd take nothing short of
+magic to get this properly closed again.
 %%%%
 An open translucent door
 
-An open door made from magically translucent wood. If reopened by a monster,
-it has a chance of breaking.
+An open door made from magically translucent wood. If closed again, all monsters
+that can wield equipment, and some of them that can't, could open it again. If
+it is closed and reopened by a monster that is aware of you, it has a chance of
+breaking.
 %%%%
 A closed translucent door
 
-A closed door made from magically translucent wood. If opened by a monster, it
-has a chance of breaking.
+A closed door made from magically translucent wood. All monsters that can wield
+equipment, and some of them that can't, may open it again. If it is opened by a
+monster while it is aware of you, it has a chance of breaking.
 %%%%
 A broken translucent door
 
@@ -601,6 +637,25 @@ A door, covered in runic writing. It looks like there is something special
 behind it — perhaps danger, perhaps treasure. You may break the runes by
 opening it like any other door, but creatures of the dungeon will not dare
 to try.
+%%%%
+A runed translucent door
+
+A door, covered in runic writing, made from magically translucent wood. It has
+been created to seal away great danger or glorious treasure. You may break the
+runes by opening it like any other door, but creatures of the dungeon will not
+dare to try.
+%%%%
+A large runed translucent door
+
+<A runed translucent door>
+%%%%
+A runed translucent gate
+
+<A runed translucent door>
+%%%%
+A huge runed translucent gate
+
+<A runed translucent door>
 %%%%
 A large open door
 
@@ -915,6 +970,14 @@ The damp floor
 The floor. It remains forever damp, perhaps due to the humidity or the constant
 flow of clouds.
 %%%%
+A wall of orange crystal
+
+<A crystal wall>
+%%%%
+A wall of pink crystal
+
+<A crystal wall>
+%%%%
 A wall of white crystal
 
 A wall made from low-grade crystal with an opalescent gleam.
@@ -993,68 +1056,89 @@ A scintillating statue
 A magically shifting statue seemingly content to glimmer and dance in place,
 dedicated to the ineffable cosmic games of chaos.
 %%%%
+# Menagerie vaults.
+A mystic cage
+
+A sturdy metal cage, inscribed with cryptic magics. Whatever it once held -
+whether person, beast, or experiment - was evidently already freed in response
+to intruders like you infiltrating the Dungeon.
+%%%%
 # Themed magic branches / portals / vaults.
 An arcane conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-destructive mystic energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its destructive mystic
+energy will harmlessly disperse.
 %%%%
 A misfortune conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-malevolent cursed energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its malevolent cursed
+energy will harmlessly disperse.
 %%%%
 A dimensional conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-extraplanar warp energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its extraplanar warp
+energy will harmlessly disperse.
 %%%%
 A soul conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-negative energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its negative energy will
+harmlessly disperse.
 %%%%
 An alchemical conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-venomous churning energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its venomous churning
+energy will harmlessly disperse.
 %%%%
 A fiery conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-ever-burning energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its ever-burning energy
+will harmlessly disperse.
 %%%%
 An icy conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-chilling cold energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its chilling cold energy
+will harmlessly disperse.
 %%%%
 An earthen conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-seismic energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its seismic energy will
+harmlessly disperse.
 %%%%
 A storm conduit
 
-A strange but sturdy metal construct, collecting and analyzing raw ambient
-magical energy. If destroyed and disrupted by sufficiently mighty magic, its
-crackling energy will harmlessly disperse.
+A strange but benign metal construct, analysing raw ambient magical energy. If
+destroyed and disrupted by sufficiently mighty magic, its crackling energy will
+harmlessly disperse.
+%%%%
+# Wizlabs and Zot _only_.
+An enigmatic dynamo
+
+A harmless yet sturdy metal construct, arcane both in power-source and
+purpose. Whatever it analyses, processes, powers, or produces can neither be
+assessed nor accessed by intruders like you infiltrating the Dungeon.
+%%%%
+A nascence circuit
+
+A coruscating spark gap of twin electrodes of impenetrably advanced technology.
+These are used to forge and power thaumaturgical constructs, though despite the
+constant crackling, this one is used up and unable to do much more than
+harmlessly dance with the joy of creating life.
 %%%%
 # Vaults with extraplanar contents.
-A bedeviled crystal wall
+A bedevilled crystal wall
 
 A wall made from shimmering crystal, from which some demonic plane peers out.
 While its composition both make it resist destruction plus reflect both fire and
-cold, the otherworldy forces within it seem to be entirely harmless... from this
-end, anyway.
+cold, the otherworldly forces within it seem to be entirely harmless... from
+this end, anyway.
 %%%%
 # Holy Pan.
 A silver wall
@@ -1159,6 +1243,13 @@ defaced; not a single distinguishing feature remains.
 A broken fleshy orifice
 
 It seems to be oozing quietly. Best not to touch it.
+%%%%
+# Crucible of Flesh
+An unnaturally hard bloodstone wall
+
+An indestructible bulwark, wrought from blood and tempered in the suffering of
+mortal lives beyond count.
+%%%%
 ########################################################################
 ### Sprint
 ########################################################################

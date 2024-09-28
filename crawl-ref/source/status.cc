@@ -2,6 +2,7 @@
 
 #include "status.h"
 
+#include "ability.h"
 #include "areas.h"
 #include "art-enum.h" // bearserk
 #include "artefact.h"
@@ -170,6 +171,7 @@ static void _describe_terrain(status_info& inf);
 static void _describe_invisible(status_info& inf);
 static void _describe_zot(status_info& inf);
 static void _describe_gem(status_info& inf);
+static void _describe_rev(status_info& inf);
 
 bool fill_status_info(int status, status_info& inf)
 {
@@ -193,6 +195,62 @@ bool fill_status_info(int status, status_info& inf)
     // completing or overriding the defaults set above.
     switch (status)
     {
+    case STATUS_DRACONIAN_BREATH:
+    {
+        if (!species::is_draconian(you.species) || you.experience_level < 7)
+            break;
+
+        inf.light_text = "Breath";
+
+        const int num = draconian_breath_uses_available();
+        if (num == 0)
+            inf.light_colour = DARKGREY;
+        else
+        {
+            inf.light_colour = LIGHTCYAN;
+            if (num == 2)
+                inf.light_text += "+";
+            else if (num == 3)
+                inf.light_text += "++";
+        }
+        break;
+    }
+
+    case STATUS_BLACK_TORCH:
+        if (!you_worship(GOD_YREDELEMNUL))
+            break;
+
+        if (!yred_torch_is_raised())
+        {
+            if (yred_cannot_light_torch_reason().empty())
+            {
+                inf.light_colour = DARKGRAY;
+                inf.light_text = "Torch";
+            }
+        }
+        else
+        {
+            inf.light_colour = MAGENTA;
+
+            if (player_has_ability(ABIL_YRED_HURL_TORCHLIGHT))
+            {
+                inf.light_text = make_stringf("Torch (%d)",
+                                    yred_get_torch_power());
+            }
+            else
+                inf.light_text = "Torch";
+
+            inf.short_text = "lit torch";
+        }
+    break;
+
+    case DUR_DIVINE_SHIELD:
+    {
+        inf.light_text = make_stringf("Shield (%d)",
+                                        you.duration[DUR_DIVINE_SHIELD]);
+    }
+    break;
+
     case STATUS_CORROSION:
         // No blank or double lights
         if (you.corrosion_amount() == 0 || you.duration[DUR_CORROSION])
@@ -201,7 +259,7 @@ bool fill_status_info(int status, status_info& inf)
         // Intentional fallthrough
     case DUR_CORROSION:
         inf.light_text = make_stringf("Corr (%d)",
-                          (-4 * you.corrosion_amount()));
+                          (-1 * you.corrosion_amount()));
         break;
 
     case DUR_FLAYED:
@@ -229,8 +287,8 @@ bool fill_status_info(int status, status_info& inf)
         {
             inf.light_text   = "-Swift";
             inf.light_colour = RED;
-            inf.short_text   = "sluggish";
-            inf.long_text    = "You are moving sluggishly.";
+            inf.short_text   = "unswift";
+            inf.long_text    = "You are covering ground slowly.";
         }
         break;
 
@@ -240,6 +298,10 @@ bool fill_status_info(int status, status_info& inf)
 
     case STATUS_GEM:
         _describe_gem(inf);
+        break;
+
+    case STATUS_REV:
+        _describe_rev(inf);
         break;
 
     case STATUS_AIRBORNE:
@@ -440,12 +502,9 @@ bool fill_status_info(int status, status_info& inf)
             const monster * const cstr = monster_by_mid(you.constricted_by);
             ASSERT(cstr);
 
-            const bool damage =
-                cstr->constriction_does_damage(you.get_constrict_type());
-
             inf.light_colour = YELLOW;
-            inf.light_text   = damage ? "Constr"      : "Held";
-            inf.short_text   = damage ? "constricted" : "held";
+            inf.light_text   = "Constr";
+            inf.short_text   = "constricted";
         }
         break;
 
@@ -529,16 +588,6 @@ bool fill_status_info(int status, status_info& inf)
         }
         break;
 
-    case STATUS_RECALL:
-        if (you.attribute[ATTR_NEXT_RECALL_INDEX] > 0)
-        {
-            inf.light_colour = WHITE;
-            inf.light_text   = "Recall";
-            inf.short_text   = "recalling";
-            inf.long_text    = "You are recalling your allies.";
-        }
-        break;
-
     case DUR_WATER_HOLD:
         inf.light_text   = "Engulf";
         if (you.res_water_drowning())
@@ -566,21 +615,21 @@ bool fill_status_info(int status, status_info& inf)
             inf.short_text   = "extremely drained";
             inf.long_text    = "Your life force is extremely drained.";
         }
-        else if (drain_perc >= 25)
+        else if (drain_perc >= 30)
         {
             inf.light_colour = RED;
             inf.light_text   = "Drain";
             inf.short_text   = "very heavily drained";
             inf.long_text    = "Your life force is very heavily drained.";
         }
-        else if (drain_perc >= 10)
+        else if (drain_perc >= 20)
         {
             inf.light_colour = LIGHTRED;
             inf.light_text   = "Drain";
             inf.short_text   = "heavily drained";
             inf.long_text    = "Your life force is heavily drained.";
         }
-        else if (drain_perc >= 5)
+        else if (drain_perc >= 10)
         {
             inf.light_colour = YELLOW;
             inf.light_text   = "Drain";
@@ -718,6 +767,11 @@ bool fill_status_info(int status, status_info& inf)
             inf.light_colour = LIGHTMAGENTA;
             inf.light_text = "Orb";
         }
+        else if (player_equip_unrand(UNRAND_CHARLATANS_ORB))
+        {
+            inf.light_colour = LIGHTMAGENTA;
+            inf.light_text = "Orb?";
+        }
         else if (orb_limits_translocation())
         {
             inf.light_colour = MAGENTA;
@@ -796,6 +850,54 @@ bool fill_status_info(int status, status_info& inf)
         if (player_in_branch(BRANCH_TARTARUS))
             _fill_inf_from_ddef(DUR_LOWERED_WL, inf);
         break;
+
+    case DUR_FUSILLADE:
+        if (!enough_mp(2, true))
+            inf.light_colour = DARKGREY;
+        break;
+
+    case STATUS_GRAVE_CLAW_UNAVAILABLE:
+        if (you.has_spell(SPELL_GRAVE_CLAW)
+            && you.props[GRAVE_CLAW_CHARGES_KEY].get_int() == 0)
+        {
+            inf.light_colour = DARKGREY;
+            inf.light_text = "-GClaw";
+        }
+        break;
+
+    case DUR_GROWING_DESTRUCTION:
+    {
+        inf.light_text = "Destr";
+        const int stacks = you.props[MAKHLEB_ATROCITY_STACKS_KEY].get_int();
+        for (int i = 0; i < stacks - 1; ++i)
+            inf.light_text += "+";
+        if (stacks == MAKHLEB_ATROCITY_MAX_STACKS)
+            inf.light_colour = LIGHTBLUE;
+    }
+    break;
+
+    case STATUS_CRUCIBLE_DEBT:
+    {
+        if (player_in_branch(BRANCH_CRUCIBLE))
+        {
+            inf.light_text = "Pact";
+            const int debt = you.props[MAKHLEB_CRUCIBLE_DEBT_KEY].get_int();
+            if (debt > 20)
+                inf.light_colour = MAGENTA;
+            else if (debt > 10)
+                inf.light_colour = RED;
+            else if (debt > 5)
+                inf.light_colour = LIGHTRED;
+            else if (debt > 0)
+                inf.light_colour = YELLOW;
+            else
+            {
+                inf.light_text = "Escape!";
+                inf.light_colour = WHITE;
+            }
+        }
+        break;
+    }
 
     default:
         if (!found)
@@ -914,6 +1016,37 @@ static void _describe_glow(status_info& inf)
     const int adj_i = min((size_t) cont, ARRAYSZ(contam_adjectives) - 1);
     inf.short_text = contam_adjectives[adj_i] + "contaminated";
     inf.long_text = describe_contamination(cont);
+}
+
+static void _describe_rev(status_info& inf)
+{
+    if (!you.has_mutation(MUT_WARMUP_STRIKES) || !you.rev_percent())
+        return;
+
+    const int tier = you.rev_tier();
+    switch (tier)
+    {
+        case 1:
+            inf.light_colour = BLUE;
+            inf.light_text   = "Rev";
+            inf.short_text   = "revving";
+            inf.long_text    = "You're starting to limber up.";
+            return;
+
+        case 2:
+            inf.light_colour = LIGHTBLUE;
+            inf.light_text   = "Rev+";
+            inf.short_text   = "revving";
+            inf.long_text    = "You're limbering up.";
+            return;
+
+        case 3:
+            inf.light_colour = WHITE;
+            inf.light_text   = "Rev*";
+            inf.short_text   = "revved";
+            inf.long_text    = "You're fully limbered up.";
+            return;
+    }
 }
 
 static void _describe_regen(status_info& inf)
@@ -1066,16 +1199,10 @@ static void _describe_terrain(status_info& inf)
 
 static void _describe_invisible(status_info& inf)
 {
-    if (!you.duration[DUR_INVIS] && you.form != transformation::shadow)
+    if (!you.duration[DUR_INVIS])
         return;
 
-    if (you.form == transformation::shadow)
-    {
-        inf.light_colour = _dur_colour(WHITE,
-                                        dur_expiring(DUR_TRANSFORMATION));
-    }
-    else
-        inf.light_colour = _dur_colour(BLUE, dur_expiring(DUR_INVIS));
+    inf.light_colour = _dur_colour(BLUE, dur_expiring(DUR_INVIS));
     inf.light_text   = "Invis";
     inf.short_text   = "invisible";
     if (you.backlit())
@@ -1084,9 +1211,7 @@ static void _describe_invisible(status_info& inf)
         inf.short_text += " (but backlit and visible)";
     }
     inf.long_text = "You are " + inf.short_text + ".";
-    _mark_expiring(inf, dur_expiring(you.form == transformation::shadow
-                                     ? DUR_TRANSFORMATION
-                                     : DUR_INVIS));
+    _mark_expiring(inf, dur_expiring(DUR_INVIS));
 }
 
 /**

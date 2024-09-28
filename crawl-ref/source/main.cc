@@ -121,6 +121,7 @@
 #include "spl-clouds.h"
 #include "spl-damage.h"
 #include "spl-summoning.h"
+#include "spl-transloc.h"
 #include "spl-util.h"
 #include "stairs.h"
 #include "startup.h"
@@ -330,6 +331,12 @@ int main(int argc, char *argv[])
 #ifdef USE_TILE
     if (!tiles.initialise())
         return -1;
+#endif
+
+#ifdef USE_TILE_LOCAL
+    // Hook up text colour redefinitions
+    for (auto col : Options.custom_text_colours)
+        term_colours[col.colour_index] = col.colour_def;
 #endif
 
     _launch_game_loop();
@@ -1523,6 +1530,9 @@ static bool _prompt_stairs(dungeon_feature_type ygrd, bool down, bool shaft)
         }
     }
 
+    if (ygrd != DNGN_TRANSPORTER && beogh_cancel_leaving_floor())
+        return false;
+
     if (Options.warn_hatches)
     {
         if (feat_is_escape_hatch(ygrd))
@@ -2629,6 +2639,8 @@ void world_reacts()
     if (!crawl_state.game_is_arena())
         player_reacts_to_monsters();
 
+    clear_monster_flags();
+
     add_auto_excludes();
 
     viewwindow();
@@ -2761,6 +2773,9 @@ static void _swing_at_target(coord_def move)
     dist target;
     target.target = you.pos() + move;
 
+    if (god_protects(monster_at(target.target), false))
+        return;
+
     // Don't warn the player "too injured to fight recklessly" when they
     // explicitly request an attack.
     unwind_bool autofight_ok(crawl_state.skip_autofight_check, true);
@@ -2815,7 +2830,7 @@ static void _do_berserk_no_combat_penalty()
  */
 static void _do_wait_spells()
 {
-    handle_searing_ray();
+    handle_searing_ray(you);
     handle_maxwells_coupling();
     handle_flame_wave();
 }

@@ -37,6 +37,7 @@
 #include "mon-tentacle.h"
 #include "notes.h" // NOTE_DREAMSHARD
 #include "player.h"
+#include "random.h"
 #include "religion.h"
 #include "spl-clouds.h"
 #include "spl-util.h"
@@ -378,40 +379,39 @@ spret cast_healing(int pow, bool fail)
     return spret::success;
 }
 
-/// Effects that occur when the player is debuffed.
-struct player_debuff_effects
-{
-    /// Attributes removed by a debuff.
-    // TODO: I'm nearly sure these are unused; REMOVEME!
-    vector<attribute_type> attributes;
-    /// Durations removed by a debuff.
-    vector<duration_type> durations;
-};
-
 /**
  * What dispellable effects currently exist on the player?
  *
- * @param[out] buffs   The dispellable effects that exist on the player.
- *                     Assumed to be empty when passed in.
+ * @return The dispellable effects that currently exist on the player.
  */
-static void _dispellable_player_buffs(player_debuff_effects &buffs)
+static vector<duration_type> _dispellable_player_buffs()
 {
-    // durations
+    vector<duration_type> dispellables;
     for (unsigned int i = 0; i < NUM_DURATIONS; ++i)
     {
         const int dur = you.duration[i];
         if (dur <= 0 || !duration_dispellable((duration_type) i))
             continue;
-        if (i == DUR_TRANSFORMATION && (you.form == transformation::shadow
-                                        || you.form == you.default_form))
+        if (i == DUR_TRANSFORMATION && (you.form == you.default_form
+                                        || you.form == transformation::slaughter))
         {
             continue;
         }
-        buffs.durations.push_back((duration_type) i);
+        // XXX: Handle special-cases with regard to monster auras.
+        //      (It would be nice if this could be handled automatically, but
+        //      there aren't yet enough of these effects to bother doing such)
+        if (i == DUR_SLOW && aura_is_active_on_player(TORPOR_SLOWED_KEY))
+            continue;
+        else if (i == DUR_SENTINEL_MARK && aura_is_active_on_player(OPHAN_MARK_KEY))
+            continue;
+
+        dispellables.push_back((duration_type) i);
         // this includes some buffs that won't be reduced in duration -
         // anything already at 1 aut, or flight/transform while <= 11 aut
         // that's probably not an actual problem
     }
+
+    return dispellables;
 }
 
 /**
@@ -421,10 +421,7 @@ static void _dispellable_player_buffs(player_debuff_effects &buffs)
  */
 bool player_is_debuffable()
 {
-    player_debuff_effects buffs;
-    _dispellable_player_buffs(buffs);
-    return !buffs.durations.empty()
-           || !buffs.attributes.empty();
+    return !_dispellable_player_buffs().empty();
 }
 
 /**
@@ -451,9 +448,8 @@ string describe_player_cancellation(bool debuffs_only)
     if (!debuffs_only && get_contamination_level())
         effects.push_back("as magically contaminated");
 
-    player_debuff_effects buffs;
-    _dispellable_player_buffs(buffs);
-    for (auto duration : buffs.durations)
+    vector<duration_type> buffs = _dispellable_player_buffs();
+    for (auto duration : buffs)
     {
         if (duration == DUR_TRANSFORMATION)
         {
@@ -502,26 +498,20 @@ string describe_player_cancellation(bool debuffs_only)
  * Forms, buffs, debuffs, contamination, probably a few other things.
  * Flight gets an extra 11 aut before going away to minimize instadeaths.
  */
-void debuff_player()
+void debuff_player(bool ignore_resistance)
 {
     bool need_msg = false;
 
     // find the list of debuffable effects currently active
-    player_debuff_effects buffs;
-    _dispellable_player_buffs(buffs);
+    vector<duration_type> buffs = _dispellable_player_buffs();
 
-    for (auto attr : buffs.attributes)
+    if (!buffs.empty() & !ignore_resistance && you.has_mutation(MUT_INVIOLATE_MAGIC))
     {
-        you.attribute[attr] = 0;
-#if TAG_MAJOR_VERSION == 34
-        if (attr == ATTR_DELAYED_FIREBALL)
-            mprf(MSGCH_DURATION, "Your charged fireball dissipates.");
-        else
-#endif
-            need_msg = true;
+        mpr("Your magical effects refuse to unravel!");
+        return;
     }
 
-    for (auto duration : buffs.durations)
+    for (auto duration : buffs)
     {
         int &len = you.duration[duration];
         if (duration == DUR_TELEPORT)
@@ -622,7 +612,7 @@ void debuff_monster(monster &mon)
     // effect = true does for PETRIFYING is cause it to turn into
     // ENCH_PETRIFIED. So... let's not do that. (Hacky, sorry!)
 
-    simple_monster_message(mon, "'s magical effects unravel!");
+    simple_monster_message(mon, " magical effects unravel!", true);
 }
 
 // pow -1 for passive
@@ -937,18 +927,43 @@ spret cast_tomb(int pow, actor* victim, int source, bool fail)
     return spret::success;
 }
 
+// Add 6 to this. Damage ranges from 9-12 (avg 10) at 0 invo,
+// to 9-78 at 27 invo.
+dice_def beogh_smiting_dice(int pow, bool allow_random)
+{
+    if (allow_random)
+        return dice_def(3, div_rand_round(pow, 8));
+    else
+        return dice_def(3, pow / 8);
+}
+
 spret cast_smiting(int pow, monster* mons, bool fail)
 {
-    if (mons == nullptr || mons->submerged())
+    if (mons == nullptr)
     {
         fail_check();
         canned_msg(MSG_NOTHING_THERE);
-        // Counts as a real cast, due to invisible/submerged monsters.
+        // Counts as a real cast, due to invisible monsters.
         return spret::success;
     }
 
+    if (mons->friendly())
+    {
+        mpr("Beogh will not strike down an ally of the cause.");
+        return spret::abort;
+    }
+
+    // The above should prevent most cases of attack prompts, but just in case...
     if (stop_attack_prompt(mons, false, you.pos()))
         return spret::abort;
+
+    // No direct divine intervention during apostle challenges
+    if (mons->has_ench(ENCH_TOUCH_OF_BEOGH))
+    {
+        simple_god_message(" booms: This is a trial of mortal prowess."
+                           " Fight with your own strength!");
+        return spret::abort;
+    }
 
     fail_check();
 
@@ -956,14 +971,14 @@ spret cast_smiting(int pow, monster* mons, bool fail)
     set_attack_conducts(conducts, *mons, you.can_see(*mons));
 
     // damage at 0 Invo ranges from 9-12 (avg 10), to 9-72 (avg 40) at 27.
-    int damage = 6 + roll_dice(3, div_rand_round(pow, 8));
+    int damage = 6 + beogh_smiting_dice(pow).roll();
 
     mprf("You smite %s%s",
          mons->name(DESC_THE).c_str(),
          attack_strength_punctuation(damage).c_str());
 
     behaviour_event(mons, ME_ANNOY, &you);
-    mons->hurt(&you, damage);
+    mons->hurt(&you, damage, BEAM_MISSILE, KILLED_BY_BEOGH_SMITING);
 
     if (mons->alive())
     {
@@ -1188,6 +1203,7 @@ void torment_cell(coord_def where, actor *attacker, torment_source_type taux)
     if (!mons
         || !mons->alive()
         || mons->res_torment()
+        || attacker && god_protects(attacker, *mons, false)
         // Monsters can't currently use the sceptre, but just in case.
         || attacker
            && mons == attacker->as_monster()
@@ -1294,7 +1310,7 @@ void cleansing_flame(int pow, cleansing_flame_source caster, coord_def where,
 {
     bolt beam;
     setup_cleansing_flame_beam(beam, pow, caster, where, attacker);
-    beam.explode();
+    beam.explode(true, caster != cleansing_flame_source::tso);
 }
 
 void majin_bo_vampirism(monster &mon, int damage)

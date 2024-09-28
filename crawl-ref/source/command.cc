@@ -280,15 +280,15 @@ void list_armour()
         estr.str("");
         estr.clear();
 
-        estr << ((i == EQ_CLOAK)       ? "Cloak  " :
-                 (i == EQ_HELMET)      ? "Helmet " :
-                 (i == EQ_GLOVES)      ? "Gloves " :
-                 (i == EQ_SHIELD)      ? "Shield " :
-                 (i == EQ_BODY_ARMOUR) ? "Armour " :
-                 (i == EQ_BOOTS)       ?
-                   (you.wear_barding() ? "Barding"
-                                       : "Boots  ")
-                                       : "unknown")
+        estr << ((i == EQ_CLOAK)           ? "Cloak  " :
+                 (i == EQ_HELMET)          ? "Helmet " :
+                 (i == EQ_GLOVES)          ? "Gloves " :
+                 (i == EQ_OFFHAND)         ? "Shield " :
+                 (i == EQ_BODY_ARMOUR)     ? "Armour " :
+                 (i == EQ_BOOTS)           ?
+                   (you.can_wear_barding() ? "Barding"
+                                           : "Boots  ")
+                                           : "unknown")
              << " : ";
 
         if (!you_can_wear(i))
@@ -297,9 +297,19 @@ void list_armour()
             estr << "    (currently unavailable)";
         else if (armour_id != -1)
         {
-            estr << you.inv[armour_id].name(DESC_INVENTORY);
-            colour = menu_colour(estr.str(), item_prefix(you.inv[armour_id]),
-                                 "equip", false);
+            // XXX: consider if this is needed
+            if (you.has_mutation(MUT_WIELD_OFFHAND)
+                && is_weapon(you.inv[armour_id]))
+            {
+                estr << "    (currently unavailable)";
+            }
+            else
+            {
+                estr << you.inv[armour_id].name(DESC_INVENTORY);
+                colour = menu_colour(estr.str(),
+                                     item_prefix(you.inv[armour_id]),
+                                     "equip", false);
+            }
         }
         else if (you_can_wear(i) == maybe_bool::maybe)
             estr << "    (restricted)";
@@ -340,7 +350,8 @@ void list_jewellery()
                  (i == EQ_RING_SIX)    ? "6th ring" :
                  (i == EQ_RING_SEVEN)  ? "7th ring" :
                  (i == EQ_RING_EIGHT)  ? "8th ring" :
-                 (i == EQ_RING_AMULET) ? "Amulet ring"
+                 (i == EQ_RING_AMULET) ? "Amulet ring" :
+                 (i == EQ_GIZMO)       ? "Gizmo"
                                        : "unknown";
 
         string item;
@@ -401,7 +412,6 @@ static const char *targeting_help_wiz =
     "<w>D</w>: get debugging information about the monster\n"
     "<w>o</w>: give item to monster\n"
     "<w>F</w>: cycle monster friendly/good neutral/neutral/hostile\n"
-    "<w>G</w>: make monster gain experience\n"
     "<w>Ctrl-H</w>: heal the monster fully\n"
     "<w>P</w>: apply divine blessing to monster\n"
     "<w>m</w>: move monster or player\n"

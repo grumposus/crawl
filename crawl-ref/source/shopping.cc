@@ -225,6 +225,7 @@ unsigned int item_value(item_def item, bool ident)
             case SPWPN_ELECTROCUTION:
             case SPWPN_PAIN:
             case SPWPN_ACID: // Unrand-only.
+            case SPWPN_FOUL_FLAME: // Unrand only.
             case SPWPN_PENETRATION: // Unrand-only.
             case SPWPN_SPECTRAL:
                 valued *= 25;
@@ -404,6 +405,7 @@ unsigned int item_value(item_def item, bool ident)
 
             case WAND_ICEBLAST:
             case WAND_ROOTS:
+            case WAND_WARPING:
             case WAND_CHARMING:
             case WAND_PARALYSIS:
                 valued += 24 * item.plus;
@@ -539,15 +541,13 @@ unsigned int item_value(item_def item, bool ident)
             // Variable-strength rings.
             if (jewellery_type_has_plusses(item.sub_type))
             {
-                // Formula: price = kn(n+1) / 2, where k is 40,
-                // n is the power. (The base variable is equal to 2n.)
+                // Formula: price = 5n(n+1)
+                // n is the power. (The base variable is equal to n.)
                 int base = 0;
 
                 switch (item.sub_type)
                 {
                 case RING_SLAYING:
-                    base = 3 * item.plus;
-                    break;
                 case RING_PROTECTION:
                     base = 2 * item.plus;
                     break;
@@ -594,7 +594,7 @@ unsigned int item_value(item_def item, bool ident)
                     break;
 
                 case RING_MAGICAL_POWER:
-                case RING_LIFE_PROTECTION:
+                case RING_POSITIVE_ENERGY:
                 case RING_POISON_RESISTANCE:
                 case RING_RESIST_CORROSION:
                     valued += 200;
@@ -645,6 +645,7 @@ unsigned int item_value(item_def item, bool ident)
         case MISC_CONDENSER_VANE:
         case MISC_PHANTOM_MIRROR:
         case MISC_LIGHTNING_ROD:
+        case MISC_GRAVITAMBOURINE:
             valued += 400;
             break;
 
@@ -811,6 +812,10 @@ static bool _purchase(shop_struct& shop, const level_pos& pos, int index)
 
     if (fully_identified(item))
         item.flags |= ISFLAG_NOTED_ID;
+
+    // Record milestones for purchasing especially notable items (runes,
+    // gems, the Orb).
+    milestone_check(item);
 
     you.del_gold(cost);
 
@@ -1647,13 +1652,6 @@ shop_type str_to_shoptype(const string &s)
 const char *shoptype_to_str(shop_type type)
 {
     return shop_types[type];
-}
-
-void list_shop_types()
-{
-    mpr_nojoin(MSGCH_PLAIN, "Available shop types: ");
-    for (const char *type : shop_types)
-        mprf_nocap("%s", type);
 }
 
 ////////////////////////////////////////////////////////////////////////

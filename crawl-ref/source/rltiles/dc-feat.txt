@@ -269,6 +269,56 @@ statue_maw
 statue_tentacles
 %syn DNGN_STATUE_TENTACLES
 
+# Depths and Zot statues
+%weight 5
+statue_depths_tengu DNGN_GRANITE_STATUE_DEPTHS
+%syn DNGN_STATUE_DEPTHS_TENGU
+statue_depths_spriggan
+%syn DNGN_STATUE_DEPTHS_SPRIGGAN
+%weight 3
+statue_depths_asmodeus
+%syn DNGN_STATUE_DEPTHS_ASMODEUS
+statue_depths_tomes
+%syn DNGN_STATUE_DEPTHS_TOMES
+%weight 1
+statue_depths_seraph
+%syn DNGN_STATUE_DEPTHS_SERAPH
+statue_depths_fangs
+%syn DNGN_STATUE_DEPTHS_FANGS
+
+%weight 6
+statue_depths_zot_dragon DNGN_GRANITE_STATUE_DEPTHS_ZOT
+%syn DNGN_STATUE_DEPTHS_ZOT_DRAGON
+statue_depths_zot_orb_guardian
+%syn DNGN_STATUE_DEPTHS_ZOT_ORB_GUARDIAN
+statue_depths_zot_tentacles
+%syn DNGN_STATUE_DEPTHS_ZOT_TENTACLES
+%weight 4
+statue_depths_zot_angel
+%syn DNGN_STATUE_DEPTHS_ZOT_ANGEL
+statue_depths_zot_devil
+%syn DNGN_STATUE_DEPTHS_ZOT_DEVIL
+%weight 2
+statue_depths_zot_cerebov
+%syn DNGN_STATUE_DEPTHS_ZOT_CEREBOV
+statue_depths_zot_lich
+%syn DNGN_STATUE_DEPTHS_ZOT_LICH
+%weight 1
+statue_depths_zot_ancient_evil
+%syn DNGN_STATUE_DEPTHS_ZOT_ANCIENT_EVIL
+
+%weight 7
+statue_zot_orb DNGN_GRANITE_STATUE_ZOT
+%syn DNGN_STATUE_ZOT_ORB
+statue_zot_serpent
+%syn DNGN_STATUE_ZOT_SERPENT
+%weight 5
+statue_zot_old_guardian
+%syn DNGN_STATUE_ZOT_OLD_GUARDIAN
+%weight 1
+statue_zot_oldest_guardian
+%syn DNGN_STATUE_ZOT_OLDEST_GUARDIAN
+
 # damaged statues
 %weight 1
 crumbled_column_1 DNGN_CRUMBLED_COLUMN
@@ -288,7 +338,7 @@ statue_iron DNGN_STATUE_IRON
 ## Features only used in certain minivaults
 %sdir dngn/vaults
 
-## Reworked statues for Zonguldrok Wizlab: gravestones
+## Renamed statues for undead vaults: gravestones
 gravestone_blank DNGN_GRAVESTONE
 gravestone_writing1
 gravestone_writing2
@@ -312,13 +362,19 @@ silver_statue_1
 silver_statue_2
 
 ## chaotic scintillating statues for Xom, Nem, and Klowns
-%weight 10
+%weight 60
 scintillating_statue_0 DNGN_SCINTILLATING_STATUE
+%weight 15
 scintillating_statue_1
 %weight 3
 scintillating_statue_2
 scintillating_statue_3
 scintillating_statue_4
+
+## Renamed statues for menageries, kennels, experiments, etc
+mystic_cage_0 DNGN_MYSTIC_CAGE
+mystic_cage_1
+mystic_cage_2
 
 #### Random tile animation for statuary ends here.
 #### Cycling tile animation for statuary starts here.
@@ -367,6 +423,10 @@ storm_conduit_3
 
 #### Cycling tile animation for statuary ends here.
 
+## machinery for wizlabs and Zot and nowhere else
+enigmatic_dynamo DNGN_ENIGMATIC_DYNAMO
+nascence_circuit DNGN_NASCENCE_CIRCUIT
+
 ## sarcophagus for ragdoll_tomb_raider
 sarcophagus_sealed DNGN_SARCOPHAGUS_SEALED
 
@@ -374,7 +434,7 @@ sarcophagus_sealed DNGN_SARCOPHAGUS_SEALED
 sarcophagus_pedestal_left DNGN_SARCOPHAGUS_PEDESTAL_LEFT
 sarcophagus_pedestal_right DNGN_SARCOPHAGUS_PEDESTAL_RIGHT
 
-## Animating statues for due_jungle_book, dis_mu, and grunt_dis_stairs_iron_hall
+## Animating statues for dis_mu and grunt_dis_stairs_iron_hall
 statue_elephant_jade DNGN_STATUE_ELEPHANT_JADE
 statue_iron_golem DNGN_STATUE_IRON_GOLEM
 
@@ -383,6 +443,44 @@ dimension_edge DNGN_DIMENSION_EDGE
 
 ## The disco ball in pan_disco_hall.
 disco_ball DNGN_DISCO_BALL
+
+## The Orb of Zot's pedestal
+orb_dais DNGN_ORB_DAIS
+
+## Loose floor deco.
+mop_1 DNGN_MOP
+mop_2 DNGN_MOP_BLOODY
+yak_fur DNGN_YAK_FUR
+lectern DNGN_LECTERN
+flower_pot_1 DNGN_FLOWER_POT
+flower_pot_broken_1 DNGN_FLOWER_POT_BROKEN
+flower_pot_2 DNGN_DARK_FLOWER_POT
+flower_pot_broken_2 DNGN_DARK_FLOWER_POT_BROKEN
+djembe_set DNGN_DJEMBE
+ensign_beogh DNGN_ENSIGN_BEOGH
+ensign_dark DNGN_ENSIGN_DARK
+ensign_gehenna DNGN_ENSIGN_GEHENNA
+## preferably have more of these
+%weight 10
+skull_pike_1 DNGN_SKULL_PIKE
+%weight 2
+skull_pike_2
+## Worth considering mostly behind glass with WALL_STUDIO bookcases.
+stacked_books_1 DNGN_STACKED_BOOKS
+stacked_books_2
+stacked_books_3
+## Ideally we'd actually have all fountains vary across branches using these as
+## a base, but this would need dry fountain and eye fountain variations drawn.
+fountain_double_decker DNGN_FOUNTAIN_NOVELTY_FANCY
+fountain_octopode DNGN_FOUNTAIN_NOVELTY_OCTOPODE
+fountain_stone_lantern DNGN_FOUNTAIN_NOVELTY_LANTERN
+fountain_xom DNGN_FOUNTAIN_NOVELTY_XOM
+##
+stone_smooth_beogh_0 STONE_SMOOTH_WALL_BEOGH
+stone_smooth_beogh_1
+
+## Wall assets are not usable as is, edit on them top of the
+## desired wall texture as needed (ie TILE_NAME_banner_beogh)
 
 # A couple of placeholders in case we absolutely need
 # to add some more tiles for vault design.
@@ -580,11 +678,18 @@ desolation_portal_closed DNGN_PORTAL_DESOLATION_GONE
 portal_unknown DNGN_UNKNOWN_PORTAL
 
 %sdir dngn/altars
-zin DNGN_ALTAR_ZIN
+zin1 DNGN_ALTAR_ZIN
+zin2
+zin3
+zin4
+zin5
+zin6
 shining_one DNGN_ALTAR_SHINING_ONE
 kikubaaqudgha DNGN_ALTAR_KIKUBAAQUDGHA
 yredelemnul DNGN_ALTAR_YREDELEMNUL
+%weight 3
 xom0 DNGN_ALTAR_XOM
+%weight 1
 xom1
 xom2
 xom3
@@ -627,6 +732,7 @@ jiyva08
 jiyva09
 jiyva10
 jiyva11
+jiyva12
 fedhas DNGN_ALTAR_FEDHAS
 cheibriados DNGN_ALTAR_CHEIBRIADOS
 ashenzari DNGN_ALTAR_ASHENZARI
@@ -663,7 +769,7 @@ runelight1
 runelight2
 runelight3
 
-%sdir dngn
+%sdir dngn/decor
 blue_fountain DNGN_FOUNTAIN DNGN_BLUE_FOUNTAIN
 blue_fountain2
 
@@ -671,6 +777,7 @@ sparkling_fountain DNGN_SPARKLING_FOUNTAIN
 sparkling_fountain2
 blood_fountain DNGN_BLOOD_FOUNTAIN
 blood_fountain2
+eyes_fountain DNGN_EYES_FOUNTAIN
 dry_fountain DNGN_DRY_FOUNTAIN
 
 %variation DNGN_DRY_FOUNTAIN white
@@ -681,6 +788,20 @@ dry_fountain DNGN_DRY_FOUNTAIN
 %repeat DNGN_DRY_FOUNTAIN DNGN_DRY_FOUNTAIN_WHITE
 %resetcol
 
+%weight 8
+cache_of_fruit_0 DNGN_CACHE_OF_FRUIT
+cache_of_fruit_1
+%weight 10
+cache_of_fruit_2
+cache_of_meat_0 DNGN_CACHE_OF_MEAT
+%weight 3
+%syn DNGN_CACHE_OF_PIZZA
+cache_of_meat_1
+cache_of_baked_goods_1 DNGN_CACHE_OF_BAKED_GOODS
+cache_of_baked_goods_2
+garden_cobble DNGN_GARDEN_COBBLE
+
+%sdir dngn
 # Remove this entry when TAG_MAJOR_VERSION == 34 is false.
 teleporter DNGN_TELEPORTER
 
@@ -828,12 +949,18 @@ monster_threat_trivial THREAT_TRIVIAL
 monster_threat_easy THREAT_EASY
 monster_threat_tough THREAT_TOUGH
 monster_threat_nasty THREAT_NASTY
+ghost_threat_trivial THREAT_GHOST_TRIVIAL
+ghost_threat_easy THREAT_GHOST_EASY
+ghost_threat_tough THREAT_GHOST_TOUGH
+ghost_threat_nasty THREAT_GHOST_NASTY
 monster_threat_unusual THREAT_UNUSUAL
 
 travel_exclusion TRAVEL_EXCLUSION_BG
 travel_exclusion_centre TRAVEL_EXCLUSION_CENTRE_BG
 
 effect/sanctuary SANCTUARY
+effect/blood_for_blood BLOOD_FOR_BLOOD
+effect/blasphemy BLASPHEMY
 mold_small1 MOLD
 mold_small2
 mold_small3

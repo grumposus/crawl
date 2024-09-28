@@ -505,6 +505,16 @@ static bool _any_crosstrained()
     return false;
 }
 
+static bool _charlatan_bonus()
+{
+    if (player_equip_unrand(UNRAND_CHARLATANS_ORB)
+        && you.skill(SK_EVOCATIONS, 10, true) > 0)
+    {
+        return true;
+    }
+    return false;
+}
+
 static bool _hermit_bonus()
 {
     if (player_equip_unrand(UNRAND_HERMITS_PENDANT)
@@ -566,6 +576,8 @@ string SkillMenuSwitch::get_help()
                 causes.push_back("cross-training");
             if (_hermit_bonus())
                 causes.push_back("the Hermit's pendant");
+            if (_charlatan_bonus())
+                causes.push_back("the Charlatan's Orb");
             result = "Skills enhanced by "
                      + comma_separated_line(causes.begin(), causes.end())
                      + " are in <green>green</green>.";
@@ -922,8 +934,17 @@ int SkillMenu::read_skill_target(skill_type sk)
         return -1;
     }
     else
+    {
         input = round(atof(result_buf) * 10.0);    // TODO: parse fixed point?
-
+        if (input > 270)
+        {
+            // 27.0 is the maximum target
+            set_help("<lightred>Your training target must be 27 or below!</lightred>");
+            return -1;
+        }
+        else
+            set_help("");
+    }
     you.set_training_target(sk, input);
     cancel_set_target();
     refresh_display();
@@ -1002,6 +1023,20 @@ bool SkillMenu::do_skill_enabled_check()
         // menu. Training will be fixed up on load.
         ASSERT(!you.has_mutation(MUT_DISTRIBUTED_TRAINING));
         set_help("<lightred>You need to enable at least one skill.</lightred>");
+        // It can be confusing if the only trainable skills are hidden. Turn on
+        // SKM_SHOW_ALL if so.
+        if (get_state(SKM_SHOW) == SKM_SHOW_DEFAULT)
+        {
+            bool showing_trainable = false;
+            for (skill_type sk = SK_FIRST_SKILL; sk < NUM_SKILLS; ++sk)
+                if (_show_skill(sk, SKM_SHOW_DEFAULT) && can_enable_skill(sk))
+                {
+                    showing_trainable = true;
+                    break;
+                }
+            if (!showing_trainable)
+                toggle(SKM_SHOW);
+        }
         return false;
     }
     return true;

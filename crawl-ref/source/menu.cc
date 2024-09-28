@@ -309,8 +309,13 @@ void UIMenu::get_item_region(int index, int *y1, int *y2)
 {
     ASSERT_RANGE(index, 0, (int)m_menu->items.size());
 
+    int row = -1;
+    // use just the index in an uninitialized menu
+    if (item_info.size() != m_menu->items.size())
+        row = index;
+    else
+        row = item_info[index].row;
 #ifdef USE_TILE_LOCAL
-    int row = item_info[index].row; // XX this seems unsafe before layout? but it doesn't crash...
     if (static_cast<size_t>(row + 1) >= row_heights.size())
     {
         // call before UIMenu has been laid out
@@ -325,12 +330,6 @@ void UIMenu::get_item_region(int index, int *y1, int *y2)
     if (y2)
         *y2 = row_heights[row+1];
 #else
-    // for console, use just the index in an uninitialized menu
-    int row = -1;
-    if (item_info.size() != m_menu->items.size())
-        row = index;
-    else
-        row = item_info[index].row;
     if (y1)
         *y1 = row;
     if (y2)
@@ -364,6 +363,10 @@ void UIMenu::update_item(int index)
 #ifdef USE_TILE_LOCAL
 static bool _has_hotkey_prefix(const string &s)
 {
+    // Don't read out of bounds!
+    if (s.size() < 5)
+        return false;
+
     // [enne] - Ugh, hack. Maybe MenuEntry could specify the
     // presence and length of this substring?
     bool let = (s[1] >= 'a' && s[1] <= 'z' || s[1] >= 'A' && s[1] <= 'Z');
@@ -2416,6 +2419,24 @@ bool MonsterMenuEntry::get_tiles(vector<tile_def>& tileset) const
     else if (Options.tile_show_threat_levels.find("unusual") != string::npos
              && m->has_unusual_items())
         tileset.emplace_back(TILE_THREAT_UNUSUAL);
+    else if (m->type == MONS_PLAYER_GHOST)
+        switch (m->threat)
+        {
+        case MTHRT_TRIVIAL:
+            tileset.emplace_back(TILE_THREAT_GHOST_TRIVIAL);
+            break;
+        case MTHRT_EASY:
+            tileset.emplace_back(TILE_THREAT_GHOST_EASY);
+            break;
+        case MTHRT_TOUGH:
+            tileset.emplace_back(TILE_THREAT_GHOST_TOUGH);
+            break;
+        case MTHRT_NASTY:
+            tileset.emplace_back(TILE_THREAT_GHOST_NASTY);
+            break;
+        default:
+            break;
+        }
     else
         switch (m->threat)
         {

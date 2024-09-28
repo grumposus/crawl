@@ -105,9 +105,9 @@ NAME:   uniq_azrael
 DEPTH:  D:12-, Orc:$, Elf, !Elf:$, Snake, !Snake:$, Spider, !Spider:$
 : place_unique(_G, "Azrael band")
 
-NAME:   uniq_blork_the_orc
-DEPTH:  D:4-6
-: place_unique(_G, "Blork the orc")
+NAME:   uniq_blorkula_the_orcula
+DEPTH:  D:5-8
+: place_unique(_G, "Blorkula the orcula")
 
 # Crazy Yuif's hut is bottom of this file.
 
@@ -288,6 +288,16 @@ DEPTH:  D:14-, Elf, !Elf:$, Snake, Spider
 # Uniques which can appear in the Depths:
 ################################################################################
 
+NAME:   uniq_arachne
+DEPTH:  Vaults:1-4, Elf, Depths:1
+veto {{
+  if crawl.game_started() and dgn.br_exists("Spider") then
+    return true
+  end
+  return false
+}}
+: place_unique(_G, "Arachne band")
+
 NAME:   uniq_asterion
 DEPTH:  Depths:1-2, Elf, Snake, Spider, Vaults:1-3
 : place_unique(_G, "Asterion")
@@ -400,6 +410,10 @@ NAME:   uniq_mlioglotl
 DEPTH:  Swamp, Snake, Shoals, Spider
 : place_unique(_G, "Mlioglotl")
 
+NAME:   uniq_wiglaf
+DEPTH:  Elf, Snake, Spider, Vaults:1-3
+: place_unique(_G, "Wiglaf")
+
 NAME:   uniq_vashnia
 DEPTH:  Snake:2-
 WEIGHT: 50
@@ -417,10 +431,10 @@ DEPTH:  Shoals:2-, !Shoals:$
 WEIGHT: 50
 : place_unique(_G, "Ilsuiw band")
 
-NAME:   uniq_arachne
+NAME:   uniq_xakkrixis
 DEPTH:  Spider:2-
-WEIGHT: 50
-: place_unique(_G, "Arachne")
+WEIGHT: 40
+: place_unique(_G, "Xak'krixis")
 
 NAME:   uniq_dissolution
 DEPTH:  Slime:2-
@@ -530,6 +544,7 @@ DEPTH:   D:2-7
 MONS:    Crazy Yiuf
 MONS:    fungus / bush w:1
 ITEM:    mace tile:wpn_hammer wtile:hammer itemname:hammer
+KFEAT:   e = cache of fruit
 # Randomisation 1: Some chance for a gate.
 SHUFFLE: Bb / Aa
 SUBST:   Bb = ;
@@ -541,14 +556,14 @@ SUBST:   A : ;;;x, a:;
 # Randomisation 2: Plants might be in the way -- Yiuf seems to be a bad
 #                  gardener. Sometimes.
 SUBST:   P : PQQ;;;; , Q = 2;
-NSUBST:  P= 1:t / * : 2;
+NSUBST:  P = 1:t / * : 2;
 # Randomisation 3: Hammers. Hammers. Hammers.
 SUBST:   ; : .:100 ;:10 d:2
 SUBST:   ; = .:10 d:2
 : if crawl.one_chance_in(300) then
 SUBST:   t = "
 : end
-SUBST:   ':.......' , "=' , ':d' , '=..d
+SUBST:   e = e''', ':.......' , "=' , ':d' , '=..d
 # Randomisation 4: trees or rock
 SUBST:   t : ttx
 MAP
@@ -556,7 +571,7 @@ MAP
  xxtttttttxxtttxx
  xxtttttttttttttx
  BAP't'tttccccctx
-;baPP't''tc'''ctx
+;baPP't''tc''ectx
 @baPPtttt'=''1ctx
 ;BAPttttttc''dctx
  xxtttttttccccctx

@@ -9,7 +9,7 @@
 # You can additionally use the following tags:
 #
 # vaults_orient_n vaults_orient_s vaults_orient_e vaults_orient_w
-# no_windows preserve_wall
+# no_windows no_wall_fixup
 #
 # vaults_orient_x: controls the entry points to the subvault.
 # A subvault using vaults_orient_n will always be entered from the north side,
@@ -17,7 +17,7 @@
 #
 # no_windows: prevents the layout from creating windows into the subvault.
 #
-# preserve_wall: prevents the layout from changing rock into the same wall type
+# no_wall_fixup: prevents the layout from changing rock into the same wall type
 # as the rest of the floor.
 #
 ################################################################################
@@ -689,6 +689,7 @@ KFEAT:   G = metal_statue
 SHUFFLE: G = GT
 COLOUR:  G = silver
 TILE:    G = dngn_silver_statue
+: set_feature_name("metal_statue", "silver statue")
 MAP
 .xx.xx.xx.xx.xx.xx.
 ...................
@@ -1964,7 +1965,7 @@ TAGS:   vaults_empty no_windows
 WEIGHT: 2
 KFEAT:  g = metal_statue
 SUBST:  ` = G....
-COLOUR: g = white
+COLOUR: g = silver
 TILE:   g = dngn_silver_statue
 : set_feature_name("metal_statue", "silver statue")
 MAP

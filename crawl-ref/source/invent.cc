@@ -524,6 +524,8 @@ string no_selectables_message(int item_selector)
         return "You aren't carrying any wands.";
     case OBJ_JEWELLERY:
         return "You aren't carrying any pieces of jewellery.";
+    case OSEL_AMULET:
+        return "You aren't carrying any amulets.";
     case OSEL_LAUNCHING:
         return "You aren't carrying any items that might be thrown or fired.";
     case OSEL_EVOKABLE:
@@ -532,12 +534,6 @@ string no_selectables_message(int item_selector)
         return "You aren't carrying any items that you can evoke.";
     case OSEL_CURSED_WORN:
         return "None of your equipped items are cursed.";
-#if TAG_MAJOR_VERSION == 34
-    case OSEL_UNCURSED_WORN_ARMOUR:
-        return "You aren't wearing any piece of uncursed armour.";
-    case OSEL_UNCURSED_WORN_JEWELLERY:
-        return "You aren't wearing any piece of uncursed jewellery.";
-#endif
     case OSEL_WORN_ARMOUR:
         return "You aren't wearing any pieces of armour.";
     case OSEL_WORN_JEWELLERY:
@@ -550,8 +546,6 @@ string no_selectables_message(int item_selector)
         return "You aren't carrying any weapons that can be branded.";
     case OSEL_ENCHANTABLE_WEAPON:
         return "You aren't carrying any weapons that can be enchanted.";
-    case OSEL_BEOGH_GIFT:
-        return "You aren't carrying anything you can give to a follower.";
     case OSEL_CURSABLE:
         return "You aren't wearing any cursable items.";
     case OSEL_UNCURSED_WORN_RINGS:
@@ -596,6 +590,9 @@ bool get_tiles_for_item(const item_def &item, vector<tile_def>& tileset, bool sh
         }
         else if (item.cursed())
             tileset.emplace_back(TILE_ITEM_SLOT_CURSED);
+
+        if (testbits(item.flags, ISFLAG_CHAOTIC))
+            tileset.emplace_back(TILE_MODIFIER_CHAOTIC);
 
         tileidx_t base_item = tileidx_known_base_item(idx);
         if (base_item)
@@ -842,6 +839,7 @@ FixedVector<int, NUM_OBJECT_CLASSES> inv_order(
     OBJ_MISSILES,
     OBJ_ARMOUR,
     OBJ_STAVES,
+    OBJ_GIZMOS,
 #if TAG_MAJOR_VERSION == 34
     OBJ_RODS,
 #endif
@@ -1076,6 +1074,7 @@ const char *item_class_name(int type, bool terse)
         case OBJ_RUNES:      return "Runes of Zot";
         case OBJ_GEMS:       return "Ancient Gems";
         case OBJ_TALISMANS:  return "Talismans";
+        case OBJ_GIZMOS:     return "Gizmo";
         }
     }
     return "";
@@ -1089,7 +1088,7 @@ const char* item_slot_name(equipment_type type)
     case EQ_HELMET:      return "helmet";
     case EQ_GLOVES:      return "gloves";
     case EQ_BOOTS:       return "boots";
-    case EQ_SHIELD:      return "shield";
+    case EQ_OFFHAND:     return "shield";
     case EQ_BODY_ARMOUR: return "body";
     default:             return "";
     }
@@ -1173,33 +1172,15 @@ bool item_is_selected(const item_def &i, int selector)
     case OSEL_CURSED_WORN:
         return i.cursed() && item_is_equipped(i);
 
-#if TAG_MAJOR_VERSION == 34
-    case OSEL_UNCURSED_WORN_ARMOUR:
-        return !i.cursed() && item_is_equipped(i) && itype == OBJ_ARMOUR;
-
-    case OSEL_UNCURSED_WORN_JEWELLERY:
-        return !i.cursed() && item_is_equipped(i) && itype == OBJ_JEWELLERY;
-#endif
-
     case OSEL_BRANDABLE_WEAPON:
         return is_brandable_weapon(i, true);
 
     case OSEL_ENCHANTABLE_WEAPON:
-        return itype == OBJ_WEAPONS
-               && !is_artefact(i)
-               && (!item_ident(i, ISFLAG_KNOW_PLUSES)
-                   || i.plus < MAX_WPN_ENCHANT);
+        return is_enchantable_weapon(i, true);
 
     case OSEL_BLESSABLE_WEAPON:
         return is_brandable_weapon(i, you_worship(GOD_SHINING_ONE)
                     || you_worship(GOD_KIKUBAAQUDGHA), true);
-
-    case OSEL_BEOGH_GIFT:
-        return (itype == OBJ_WEAPONS
-                || is_offhand(i)
-                || itype == OBJ_ARMOUR
-                   && get_armour_slot(i) == EQ_BODY_ARMOUR)
-                && !item_is_equipped(i);
 
     case OSEL_CURSABLE:
         return item_is_equipped(i) && item_is_cursable(i);
@@ -1227,6 +1208,9 @@ bool item_is_selected(const item_def &i, int selector)
 
     case OSEL_WORN_JEWELLERY:
         return item_is_equipped(i) && item_is_selected(i, OBJ_JEWELLERY);
+
+    case OSEL_AMULET:
+        return itype == OBJ_JEWELLERY && jewellery_is_amulet(i);
 
     case OSEL_WORN_EQUIPABLE:
         if (!item_is_equipped(i))
@@ -1497,6 +1481,9 @@ bool check_old_item_warning(const item_def& item,
     bool penance = false;
     if (oper == OPER_WIELD) // can we safely unwield old item?
     {
+        if (you.has_mutation(MUT_WIELD_OFFHAND))
+            return true; // defer until unwielding
+
         if (!you.slot_item(EQ_WEAPON, check_melded))
             return true;
 

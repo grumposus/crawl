@@ -310,7 +310,7 @@ Movement
 ========================================
 
 You can make your character walk around with the numeric keypad (try both
-Numlock on and off) or the "Rogue" keys (hjklyubn). If this is too slow, you can
+NumLock on and off) or the "Rogue" keys (hjklyubn). If this is too slow, you can
 make your character walk repeatedly by pressing Shift and a direction;
 alternatively, press '/' followed by a direction. You will walk in that
 direction until any of a number of things happen: a hostile monster is visible
@@ -1210,7 +1210,7 @@ Crawl's homepage is at:
   http://crawl.develz.org
 
 Use this page for direct links to downloads of the most recent version. You can
-also submit bug reports on the Github issue tracker at:
+also submit bug reports on the GitHub issue tracker at:
 
   https://github.com/crawl/crawl/issues
 
@@ -1372,10 +1372,10 @@ Examples for this are the resistances: there are very few permanent sources,
 most involve a choice (like rings or specific armour) or are only semi-permanent
 (like mutations). Another example is the absence of clear-cut best items, which
 comes from the fact that most artefacts are randomly generated. Furthermore,
-even non-random artefacts cannot be wished for, as scrolls of acquirement
-produce random items in general. Likewise, there are no sure-fire means of life
-saving (the closest equivalents are scrolls of blinking, and good religious
-standings for some deities).
+scrolls of acquirement offer a random selection of items instead of a specific
+wish. Likewise, there are no sure-fire means of life saving (the closest
+equivalents are scrolls of blinking, and good religious standings for some
+deities).
 
 Anti-grinding
 ========================================
@@ -1538,21 +1538,19 @@ the player to set aside many aspects of the game while still developing a
 strong character.
 
 
-Hill Orcs (HO)
-  Hill Orcs are Orcs from the upper world who, jealous of the riches which their
-  cousins (the Cave Orcs) possess below the ground, descend in search of plunder
-  and adventure.
+Mountain Dwarves (MD)
 
-  Hill Orcs are strong and robust. Their forte is brute-force fighting, and they
-  are skilled at using most hand weapons (particularly axes, with which they are
-  experts), though they are not particularly good at using missile weapons. Hill
-  Orcs are passable users of most types of magic and are particularly skilled
-  with fire.
+  Mountain Dwarves are stout and hardy folk, adept at fighting with axes and
+  blugeoning weapons, though lacking the dexterity to excel at other forms of
+  combat. Their reserves of magic are somewhat poor, though they still make
+  passable spellcasters, and their connection with the blood of the earth gives
+  them a particular talent at fire and earth magics. Their spell success is
+  significantly less encumbered by armour than other species.
 
-  Hill Orcs have a strong connection to the gods and learn Invocations very
-  quickly. The Orc god Beogh is worshipped only by Orcs, and the orc priests of
-  the Dungeon preach that Beogh is indeed the only true god. Hill Orcs may
-  convert to Beogh even without an altar whenever an orc priest is in sight.
+  They are superlative artisans and smiths, employed in ancient times by even the
+  gods themselves, and this spiritual history makes them exceptional at invoking
+  divine aid. They can even use enchantment scrolls to improve artefacts that
+  would be beyond the understanding of any other species.
 
 Minotaurs (Mi)
   The Minotaurs are a species of hybrids, possessing Human bodies with bovine
@@ -1636,7 +1634,7 @@ Deep Elves (DE)
 Armataurs (At)
   The Armataurs are a large, scaled mammalian species, walking on four feet
   and swinging a powerful tail behind them. Their elephant-back armies
-  terrorize the lands outside the Dungeon.
+  terrorise the lands outside the Dungeon.
 
   Armataurs instinctively roll when moving toward foes, getting a free move and
   regenerating magic. They have great aptitudes with armour and shields, though
@@ -1788,6 +1786,25 @@ experienced players may not find difficult per se, but that may require quite
 a bit of experience to adapt to. It also includes species that are just
 plain difficult, such as Mummies.
 
+Coglins (Co)
+   Unlike most of their goblin kin, Coglins augment their tiny frames with
+   charm-wrought steel. Their exoskeletons, capable of wielding weapons
+   independently in each arm, are begun with hand-me-downs from their sprawling
+   families. By the time they come of age, they are inseparable from their
+   creations, and experienced individuals often further customise themselves
+   with uniquely powerful additions.
+
+   Haphazard and jerry-rigged, Coglin exoskeletons lack the flexibility of
+   natural bodies. Though their arms can fly in a whir of destruction, it
+   takes quite a bit of swinging to rev them up to that speed. Further, with
+   their bodies swallowed in the controls of their machine, they cannot wear
+   jewelry - the interference of multiple magical fields would be catastrophic!
+
+   Even so, a true Coglin would never criticise their creation. They believe
+   that spirits of steel and sandalwood come to rest within every thing that
+   draws blood, slowly and carefully re-attuning their exoskeletons to those
+   spirits whenever they wield or remove weapons. Never scorn the spirits!
+
 Vine Stalkers (VS)
   Limber in shape, Vine Stalkers are anthropomorphic masses of thick vines.
   They possess a once-humanoid core, parasitised moments before death by the
@@ -1797,14 +1814,14 @@ Vine Stalkers (VS)
 
   Magic courses freely through their bodies, and any damage they take is split
   between their health and magical reserves. They also physically regenerate
-  at an alarming rate. However these traits come at a price: the dual nature of
+  at an alarming rate. However, these traits come at a price: the dual nature of
   their bodies makes them extremely frail, and they cannot benefit from potions
   to heal their wounds.
 
   Living examples of adaptation, Vine Stalkers level up quickly and lend well
   to an all-out offensive style; trusting their stealth to choose their prey
   and then their regenerating capabilities to power through the wounds they may
-  sustain in battle. Many members of the species however, are seen wielding
+  sustain in battle. Many members of the species, however, are seen wielding
   magic quite competently and then switching to a hybrid style when their
   reserves start to run low, thus replenishing their shroud of magic and their
   spells' fuel with each voracious bite.
@@ -2195,9 +2212,10 @@ command to target a specific monster with a reaching attack, or use Autofight
 ('tab') to reach automatically.
 
 Finally, Unarmed Combat skill increases the accuracy, damage, and speed of
-attacks made while unarmed, and slightly increases the damage of attacks from
-an empty off-hand. Note that auxiliary attacks (such as a Armataur's tail-slap
-or a Minotaur's headbutt) are not affected by Unarmed Combat.
+attacks made while unarmed. Note that most auxiliary attacks, such as an
+Armataur's tail-slap or a Minotaur's headbutt, are not affected by Unarmed
+Combat. The only exception is the off-hand punch attack granted by using
+neither weapon nor shield, which Unarmed Combat makes somewhat more effective.
 
 Ranged combat skills
 ========================================
@@ -2299,7 +2317,7 @@ Movement
 
 direction
   This moves one square. The direction is either one of the numpad cursor keys
-  (try both Numlock on and off) or one of the Rogue vi keys (hjklyubn).
+  (try both NumLock on and off) or one of the Rogue vi keys (hjklyubn).
 
 Shift-direction or / direction
   This moves straight until something interesting is found (like a monster). If

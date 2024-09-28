@@ -15,6 +15,7 @@
 #include "act-iter.h"
 #include "areas.h"
 #include "artefact.h"
+#include "art-enum.h"
 #include "branch.h"
 #include "chardump.h"
 #include "cloud.h"
@@ -101,7 +102,7 @@ static bool _evoke_horn_of_geryon()
 
         if (random2(adjusted_power) > 7)
             beh = BEH_FRIENDLY;
-        mgen_data mg(MONS_HELL_BEAST, beh, you.pos(), MHITYOU, MG_AUTOFOE);
+        mgen_data mg(MONS_SIN_BEAST, beh, you.pos(), MHITYOU, MG_AUTOFOE);
         mg.set_summoned(&you, 3, SPELL_NO_SPELL);
         mg.set_prox(PROX_CLOSE_TO_PLAYER);
         mon = create_monster(mg);
@@ -111,29 +112,6 @@ static bool _evoke_horn_of_geryon()
     if (!created)
         mpr("Nothing answers your call.");
     return true;
-}
-
-/**
- * Spray lightning in all directions. (Randomly lightning bolt or OoE.)
- *
- * @param range         The range of the beams. (As with all beams, eventually
- *                      capped at LOS.)
- * @param power         The power of the beams. (Affects damage.)
- */
-static void _spray_lightning(int range, int power)
-{
-    const zap_type zap = random_choose_weighted(3, ZAP_LIGHTNING_BOLT,
-                                                2, ZAP_ORB_OF_ELECTRICITY);
-
-    bolt beam;
-    // range has no tracer, so randomness is ok
-    beam.range = range;
-    beam.source = you.pos();
-    beam.target = you.pos();
-    beam.target.x += random2(13) - 6;
-    beam.target.y += random2(13) - 6;
-    // Non-controlleable, so no player tracer.
-    zapping(zap, power, beam);
 }
 
 static int _lightning_rod_power()
@@ -159,21 +137,6 @@ static bool _lightning_rod(dist *preselect)
 }
 
 /**
- * Spray lightning in all directions around the player.
- *
- * Quantity, range & power increase with level.
- */
-void black_drac_breath()
-{
-    const int num_shots = roll_dice(2, 1 + you.experience_level / 7);
-    const int range = you.experience_level / 3 + 5; // 5-14
-    const int power = 25 + (you.form == transformation::dragon
-                            ? 2 * you.experience_level : you.experience_level);
-    for (int i = 0; i < num_shots; ++i)
-        _spray_lightning(range, power);
-}
-
-/**
  * Returns the MP cost of zapping a wand, depending on the player's MP-powered wands
  * level and their available MP (or HP, if they're a djinn).
  */
@@ -192,7 +155,9 @@ int wand_power(spell_type wand_spell)
     if (cap == 0)
         return -1;
     const int mp_cost = wand_mp_cost();
-    const int pow = (15 + you.skill(SK_EVOCATIONS, 7) / 2) * (mp_cost + 9) / 9;
+    int pow = (15 + you.skill(SK_EVOCATIONS, 7) / 2) * (mp_cost + 9) / 9;
+    if (player_equip_unrand(UNRAND_GADGETEER))
+        pow = pow * 130 / 100;
     return min(pow, cap);
 }
 
@@ -265,8 +230,15 @@ void zap_wand(int slot, dist *_target)
     if (mp_cost)
         finalize_mp_cost();
 
-    // Take off a charge.
-    wand.charges--;
+    // Take off a charge (unless gadgeteer procs)
+    if ((you.wearing_ego(EQ_GIZMO, SPGIZMO_GADGETEER)
+        || player_equip_unrand(UNRAND_GADGETEER))
+        && x_chance_in_y(3, 10))
+    {
+        mpr("You conserve a charge of your wand.");
+    }
+    else
+        wand.charges--;
 
     if (wand.charges == 0)
     {
@@ -547,7 +519,8 @@ void wind_blast(actor* agent, int pow, coord_def target)
         if (act->alive())
         {
             const int push = _gale_push_dist(agent, act, pow);
-            act->knockback(*agent, push, pow, "gust of wind");
+            act->knockback(*agent, push, default_collision_damage(pow, true).roll(),
+                           "gust of wind");
         }
     }
 
@@ -733,7 +706,7 @@ static spret _phantom_mirror(dist *target)
 static bool _valid_tremorstone_target(const monster &m)
 {
     return !mons_is_firewood(m)
-        && !god_protects(&m)
+        && !god_protects(m)
         && !always_shoot_through_monster(&you, m);
 }
 
@@ -953,17 +926,14 @@ static spret _condenser()
         target_list.push_back(t);
     shuffle_array(target_list);
     bool did_something = false;
-    bool suppressed = false;
 
     for (auto p : target_list)
     {
-        const cloud_type cloud = cloud_picker.pick(condenser_clouds, pow, CLOUD_NONE);
+        cloud_type cloud = cloud_picker.pick(condenser_clouds, pow, CLOUD_NONE);
 
-        if (is_good_god(you.religion) && cloud == CLOUD_MISERY)
-        {
-            suppressed = true;
-            continue;
-        }
+        // Reroll misery clouds until we get something our god is okay with
+        while (is_good_god(you.religion) && cloud == CLOUD_MISERY)
+            cloud = cloud_picker.pick(condenser_clouds, pow, CLOUD_NONE);
 
         // Get at least one cloud, even at 0 power.
         if (did_something && !x_chance_in_y(50 + pow, 160))
@@ -977,10 +947,24 @@ static spret _condenser()
 
     if (did_something)
         mpr("Clouds condense from the air!");
-    else if (suppressed)
-        simple_god_message(" suppresses the foul vapours!");
 
     return spret::success;
+}
+
+static int _gravitambourine_power()
+{
+    return 15 + you.skill(SK_EVOCATIONS, 7) / 2;
+}
+
+static bool _gravitambourine(dist *target)
+{
+    const spret ret = your_spells(SPELL_GRAVITAS, _gravitambourine_power(),
+            false, nullptr, target);
+
+    if (ret == spret::abort)
+        return false;
+
+    return true;
 }
 
 static transformation _form_for_talisman(const item_def &talisman)
@@ -1095,7 +1079,6 @@ string cannot_evoke_item_reason(const item_def *item, bool temp, bool ident)
         && silenced(you.pos()))
     {
         return "You can't produce a sound!";
-
     }
 
     if (temp && is_xp_evoker(*item) && evoker_charges(item->sub_type) <= 0)
@@ -1172,6 +1155,16 @@ bool evoke_item(item_def& item, dist *preselect)
 
         case MISC_PHIAL_OF_FLOODS:
             if (_phial_of_floods(preselect))
+            {
+                expend_xp_evoker(item.sub_type);
+                practise_evoking(3);
+            }
+            else
+                return false;
+            break;
+
+        case MISC_GRAVITAMBOURINE:
+            if (_gravitambourine(preselect))
             {
                 expend_xp_evoker(item.sub_type);
                 practise_evoking(3);
@@ -1373,6 +1366,11 @@ string evoke_damage_string(const item_def& item)
             return spell_damage_string(SPELL_TREMORSTONE, true,
                 _tremorstone_power());
         }
+        else if (item.sub_type == MISC_GRAVITAMBOURINE)
+        {
+            return spell_damage_string(SPELL_GRAVITAS, true,
+                _gravitambourine_power());
+        }
         else
             return "";
     }
@@ -1395,6 +1393,8 @@ string evoke_noise_string(const item_def& item)
             return spell_noise_string(SPELL_THUNDERBOLT);
         else if (item.sub_type == MISC_TIN_OF_TREMORSTONES)
             return spell_noise_string(SPELL_TREMORSTONE);
+        else if (item.sub_type == MISC_GRAVITAMBOURINE)
+            return spell_noise_string(SPELL_GRAVITAS);
         else
             return "";
     }

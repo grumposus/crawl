@@ -227,7 +227,7 @@ static feature_def feat_defs[] =
     DNGN_MALIGN_GATEWAY, "portal to somewhere", "malign_gateway",
     DCHAR_ARCH, NUM_DCHAR_TYPES,
     COLOURS(ETC_SHIMMER_BLUE, LIGHTGREY),
-    FFT_SOLID, MF_STAIR_UP,
+    FFT_SOLID, MF_WALL,
 },
 
 {
@@ -267,6 +267,13 @@ static feature_def feat_defs[] =
 
 {
     DNGN_FLOOR, "floor", "floor",
+    DCHAR_FLOOR, DCHAR_FLOOR_MAGIC,
+    COLOUR_IS(ETC_FLOOR),
+    FFT_NONE, MF_FLOOR,
+},
+
+{
+    DNGN_ORB_DAIS, "the orb dais", "orb dais",
     DCHAR_FLOOR, DCHAR_FLOOR_MAGIC,
     COLOUR_IS(ETC_FLOOR),
     FFT_NONE, MF_FLOOR,
@@ -496,6 +503,7 @@ PORTAL_ENTRANCE(DNGN_ENTER_VOLCANO, "dark tunnel", "enter_volcano", RED),
 PORTAL_ENTRANCE(DNGN_ENTER_WIZLAB, "magical portal", "enter_wizlab", ETC_SHIMMER_BLUE),
 PORTAL_ENTRANCE(DNGN_ENTER_DESOLATION, "crumbling gateway", "enter_desolation", WHITE),
 PORTAL_ENTRANCE(DNGN_ENTER_ARENA, "gate leading to Okawaru's Arena", "enter_arena", WHITE),
+PORTAL_ENTRANCE(DNGN_ENTER_CRUCIBLE, "gate leading to the Crucible of Flesh", "enter_crucible", WHITE),
 #if TAG_MAJOR_VERSION == 34
 PORTAL_EXIT(DNGN_EXIT_PORTAL_VAULT, "gate leading back out of this place", "exit_portal_vault", ETC_SHIMMER_BLUE),
 #endif
@@ -511,6 +519,7 @@ PORTAL_EXIT(DNGN_EXIT_VOLCANO, "rocky tunnel leading out of this place", "exit_v
 PORTAL_EXIT(DNGN_EXIT_WIZLAB, "portal leading out of this place", "exit_wizlab", ETC_SHIMMER_BLUE),
 PORTAL_EXIT(DNGN_EXIT_DESOLATION, "gate leading back out of this place", "exit_desolation", WHITE),
 PORTAL_EXIT(DNGN_EXIT_ARENA, "gate leading back out of this place", "exit_arena", WHITE),
+PORTAL_EXIT(DNGN_EXIT_CRUCIBLE, "gate leading back out of this place", "exit_crucible", WHITE),
 
 #define BRANCH_ENTRANCE(enum, name, vaultname)\
 {\
@@ -640,6 +649,7 @@ ALTAR(DNGN_ALTAR_IGNIS, "candlelit altar of Ignis", "altar_ignis", ETC_CANDLES),
 FOUNTAIN(DNGN_FOUNTAIN_BLUE, "fountain of clear blue water", "fountain_blue", BLUE),
 FOUNTAIN(DNGN_FOUNTAIN_SPARKLING, "fountain of sparkling water", "fountain_sparkling", LIGHTBLUE),
 FOUNTAIN(DNGN_FOUNTAIN_BLOOD, "fountain of blood", "fountain_blood", RED),
+FOUNTAIN(DNGN_FOUNTAIN_EYES, "fountain of eyes", "fountain_eyes", MAGENTA),
 FOUNTAIN(DNGN_DRY_FOUNTAIN, "dry fountain", "dry_fountain", LIGHTGREY),
 #if TAG_MAJOR_VERSION == 34
 FOUNTAIN(DNGN_DRY_FOUNTAIN_BLUE, "dry fountain", "non-fountain_blue", LIGHTGREY),
@@ -648,6 +658,27 @@ FOUNTAIN(DNGN_DRY_FOUNTAIN_BLOOD, "dry fountain", "non-fountain_blood", LIGHTGRE
 #endif
 
 FOUNTAIN(DNGN_RUNELIGHT, "runelight", "runelight", ETC_DISJUNCTION),
+
+{
+    DNGN_CACHE_OF_BAKED_GOODS, "cache of baked goods", "cache of baked goods",
+    DCHAR_ITEM_SKELETON, NUM_DCHAR_TYPES,
+    COLOUR_AND_MAP(YELLOW),
+    FFT_NONE, MF_FLOOR,
+},
+
+{
+    DNGN_CACHE_OF_FRUIT, "cache of fruit", "cache of fruit",
+    DCHAR_ITEM_SKELETON, NUM_DCHAR_TYPES,
+    COLOUR_AND_MAP(GREEN),
+    FFT_NONE, MF_FLOOR,
+},
+
+{
+    DNGN_CACHE_OF_MEAT, "cache of meat", "cache of meat",
+    DCHAR_ITEM_SKELETON, NUM_DCHAR_TYPES,
+    COLOUR_AND_MAP(BROWN),
+    FFT_NONE, MF_FLOOR,
+},
 
 #if TAG_MAJOR_VERSION == 34
 {

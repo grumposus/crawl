@@ -661,7 +661,7 @@ ENDMAP
 # basket of spiders trap.
 NAME:   spiders_nest_spider_trap
 TAGS:   no_item_gen no_monster_gen no_pool_fixup
-NSUBST: * = 1:z / *:*
+NSUBST: z = 1:z / *:*
 KMONS:  M = fungus
 {{
  local tm = TriggerableFunction:new{func="callback.spider_nest_trap"}
@@ -671,7 +671,7 @@ KMONS:  M = fungus
  lua_marker('z', tm)
  lua_marker('Z', wm)
 }}
-SUBST:  W = Ww , z : * , * = %%$*..M , . = WW.
+SUBST:  W = Ww , * = %%$*..M
 MONS:   wolf spider / redback w:15 / tarantella w:2 / nothing w:5
 MAP
   xxxxx    xxxx
@@ -686,8 +686,8 @@ xxW.xxxW..xxxxW.xx
     xxx.Wxxx.Wxxx
   xxxxW.xxxxx.W1xx
    xx1..x***xx.Wxx
- xxxx.Wxx****xx.xx
-.....xxx******Z.xx
+ xxxx.Wxx***zxx.xx
+.....xxx****zMZ.xx
 ..xxxx xxxxxxxxxx
 @..xx   xxxxxxxx
 ENDMAP
@@ -721,19 +721,21 @@ NAME:   spiders_nest_ghost_moth_duel
 TAGS:   no_item_gen no_monster_gen
 DEPTH:  Spider:3-
 MONS:   ghost moth, tarantella
-ITEM:   potion of ambrosia ident:type
+ITEM:   potion of ambrosia ident:type q:1 / \
+        potion of ambrosia ident:type q:2 w:5
+KFEAT:  ^ = web
 MAP
     ........
    ..xx..xx..
   ..xx....xx..
  ..xx......xx..
 ..xx........xx..
-.xx....WW....xx.
-.x....WxxW....x.
-.x...WxxxxW...x.
-.x.2.WxxxxW.2.x.
-.x.22.WxxW.22.x.
-.xx....WW....xx.
+.xx....^^....xx.
+.x....^xx^....x.
+.x...^xxxx^...x.
+.x.2.^xxxx^.2.x.
+.x.22.^xx^.22.x.
+.xx....^^....xx.
 ..xx...1....xx..
  ..xx......xx..
   ..xxddddxx..
@@ -850,7 +852,7 @@ ENDMAP
 
 NAME:    hangedman_creepy_crawlies
 TAGS:    no_monster_gen patrolling
-ORIENT:  float
+ORIENT:  west
 DEPTH:   Spider, !Spider:$
 WEIGHT:  5
 KMONS:   1 = scorpion w:55 / hornet w:13 / brain worm w:2
@@ -864,38 +866,37 @@ KITEM:   6 = superb_item w:5 / any armour good_item ego:poison_resistance w:5
 KFEAT:   12345abcdefABCDEF% = web / shallow_water / . w:30
 KFEAT:   . = . w:39 / web w:1
 KMASK:   ' = !no_monster_gen
-KPROP:   ` = no_tele_into
 SHUFFLE: ab, AB, cd, CD, ef, EF, gh, GH
 SUBST:   ' = .:28 W:1 %:1, % = 00%%.
 SUBST:   cC = c:13 4:1 3:1, 1 = 1:17 2:2 5:1
 SUBST:   ` = .
 :        dgn.delayed_decay(_G, '%', 'any corpse')
 MAP
-                  ' '     'xxx'     ' '
-    . .  . .     ''''''  ''xDx''   '''''
-   ..........   ''xxx''''''x2x''' ''xxx''
-  ..xxx..xxx..   'xExx''xxxx1xxx'''xxBx'
-  .xx1x..x1xx.  ''xx5xxxx.....%xxxxx1xx''
- ''x1xx%%xx1x''  ''xx4x%.........xx1xx''
- ''xx1%%%%1xx''   ''xx...xxx1xxx..%xx''
-  ''xxx..xxx''    ''x...xx`x2x`xx%..x''
-   ''xx..xx''   '''xx.%x4xxxCxxx1x..xx''
-''''xx..xx''  '''''x.1xxx5xxxxx1xxx..x''
-xxxxx..xx''   'xxx'x11x`xxFx'xAxx`x..x''
-x21x..xxxx'' ''x6xxx%3xxxxxx'xxxxxx..xx''
-xxx....12x'''''xx42%%%24xxx''''x21....xxx
-''xx..xxxxxx'xxxxxx3%xxx6x'' ''xxxx..x12x
- ''x..x`xxax'xexx`x11x'xxx''  ''xx..xxxxx
- ''x..xxx1xxxxx5xxx1.x'''''  ''xx..xx''''
- ''xx..x1xxxcxxx4x%.xx''    ''xx..xx''
-  ''x..%xx`x2x`xx...x''    ''xxx..xxx''
-  ''xx%..xxx1xxx...xx''   ''xx1%%%%1xx''
- ''xx1x..........%x4xx''  ''x1xx%%xx1x''
-''xx1xxxxx%......xxx5xx''  .xx1x..x1xx..
- 'xbxx'''xxx1xxxxx'xxfx'   ..xxx..xxx..
-''xxx'' '''x2x''''''xxx''   ..........
- '''''   ''xdx''  ''''''     . .  . .
-  ' '     'xxx'     ' '
+xxxxxx              ' '     'xxx'     ' '
+xxxxxx. .  . .     ''''''  ''xDx''   '''''
+xxxxx..........   ''xxx''''''x2x''' ''xxx''
+xxxx..xxx..xxx..   'xExx''xxxx1xxx'''xxBx'
+xxxx.xx1x..x1xx.  ''xx5xxxx.....%xxxxx1xx''
+xxx''x1xx%%xx1x''  ''xx4x%.........xx1xx''
+xxx''xx1%%%%1xx''   ''xx...xxx1xxx..%xx''
+xxxx''xxx..xxx''    ''x...xxxx2xxxx%..x''
+xxxxx''xx..xx''   '''xx.%x4xxxCxxx1x..xx''
+xx''''xx..xx''  '''''x.1xxx5xxxxx1xxx..x''
+xxxxxxx..xx''   'xxx'x11xxxxFx'xAxxxx..x''
+xxx21x..xxxx'' ''x6xxx%3xxxxxx'xxxxxx..xx''
+xxxxx....12x'''''xx42%%%24xxx''''x21....xxx
+xx''xx..xxxxxx'xxxxxx3%xxx6x'' ''xxxx..x12x
+xx'''x..xxxxax'xexxxx11x'xxx''  ''xx..xxxxx
+xx'''x..xxx1xxxxx5xxx1.x'''''  ''xx..xx''''
+xxx''xx..x1xxxcxxx4x%.xx''    ''xx..xx''
+xxxx''x..%xxxx2xxxx...x''    ''xxx..xxx''
+xxxx''xx%..xxx1xxx...xx''   ''xx1%%%%1xx''
+xxx''xx1x..........%x4xx''  ''x1xx%%xx1x''
+xx''xx1xxxxx%......xxx5xx''  .xx1x..x1xx..
+xxx'xbxx'''xxx1xxxxx'xxfx'   ..xxx..xxx..
+xx''xxx'' '''x2x''''''xxx''   ..........
+xxx'''''   ''xdx''  ''''''     . .  . .
+xxxx' '     'xxx'     ' '
 ENDMAP
 
 # Some hornet vaults. Hornets eat spiders (and players).
@@ -1235,7 +1236,7 @@ NAME:   nicolae_arachne_temple
 TAGS:   no_item_gen no_monster_gen no_trap_gen
 DEPTH:  Spider:2-
 MONS:   tarantella, wolf spider, redback, jumping spider
-KMONS:  A = Arachne, orb spider
+KMONS:  A = Xak'krixis, orb spider
 KFEAT:  -' = web / floor w:40
 COLOUR: -2 = brown
 COLOUR: 'A435 = yellow
@@ -1777,16 +1778,16 @@ ENDMAP
 
 NAME:  nicolae_spider_orb_run
 TAGS:  no_pool_fixup transparent
-KMASK: '1 = opaque
-KMASK: '1 = no_monster_gen
-KMASK: '1 = no_item_gen
-KMASK: '1 = no_trap_gen
-KPROP: '1 = no_tele_into
-MONS:  orb spider
+KMONS: 1 = orb spider
 SUBST: D = x., 0 = 000.
+KMASK: '1> = opaque
+KMASK: '1> = no_monster_gen
+KMASK: '1> = no_item_gen
+KMASK: '1> = no_trap_gen
+KPROP: '1> = no_tele_into
 MAP
      xxxxxxxxxxx
-  xxxx'1'''''1'xxxx
+  xxxx'1''>''1'xxxx
  xxxxxwwwxxxwwwxxxxx
 ....xx....0....xx....
 xD.DxxD0DxxxD0DxxD.Dx
@@ -1798,7 +1799,7 @@ xxD.xD.D.DxD.D.Dx.Dxx
 xD.DxxD0DxxxD0DxxD.Dx
 xxD0.....xxx.....0Dxx
  xxxxxwwwxxxwwwxxxxx
-  xxxx'1'''''1'xxxx
+  xxxx'1''>''1'xxxx
      xxxxxxxxxxx
 ENDMAP
 
@@ -2287,13 +2288,13 @@ TAGS:   no_pool_fixup
 WEIGHT: 20
 PLACE:  Spider:$
 ORIENT: float
-MONS:   ghost moth, moth of wrath / ghost moth, emperor scorpion
+MONS:   ghost moth, moth of wrath, emperor scorpion
 MONS:   wolf spider / redback / tarantella / jumping spider / culicivora
-MONS:   orb spider / steelbarb worm, redback
+MONS:   orb spider / steelbarb worm w:7, redback
 KITEM:  R = milky-white gem
 KITEM:  O = gossamer rune of Zot
-NSUBST: 4 = 3:3 / * = 44.
-NSUBST: 7 = 3 = 111.. / 1:2
+NSUBST: 4 = 3:3 / * = 44444..
+NSUBST: 7 = 3 = 111.. / 2 = 12
 NSUBST: d = 1:R / 3:d / 3:e / *:f
 SUBST:  5 = 5., 6 = 66...
 SUBST:  W = W..
@@ -2312,7 +2313,7 @@ wW.xcccW666....W5.W....WWWWW..cccxx
   xxcW-4.wccdd575dwww4d--ccc.-..cccxx
   WxcW-..5cd4wwwww3Oww474-3c..W5cccxxx
   xxccW.4.c-74.wwwwwww4ddccc6-.Wcccxx
-   xxccW4Wcccc...4.dd4---6-6-6ccccxx
+   xxccW4Wcccc..74.dd4---6-6-6ccccxx
     xxcW45..-cccc-3cc-66-6-ccccxxxx
      xcccW-...44cccc6-6-6-ccxxxxxx
      xxxcccccc4.....-6-ccccxx  xx
@@ -2341,7 +2342,7 @@ SHUFFLE: OP / 1p / 2Q / *q
 NSUBST:  8 = 2:c / *:7, " = 1:. / 1:c. / *:c
 NSUBST:  d = 1:e / * = def
 SUBST:   3 = 3., 4 = 4., 5 = 55., 6 = 66..., 7 = 777.
-SUBST:   - = .....WWW^, pQq = .
+SUBST:   - = .....WW^^, pQq = .
 KFEAT:   ^ = web trap
 TILE:    C = wall_brick_gray
 : setup_endvault_loot(_G)
@@ -2429,7 +2430,6 @@ NAME:    grunt_spider_rune_island
 TAGS:    no_monster_gen
 PLACE:   Spider:$
 ORIENT:  west
-NSUBST:  d = 1:O / 3:d / 3:e / *:f
 MONS:    ghost moth, moth of wrath, sun moth
 MONS:    emperor scorpion / w:5 spark wasp / w:5 jorogumo
 MONS:    orb spider
@@ -2437,18 +2437,18 @@ MONS:    wolf spider / redback / tarantella / culicivora / jumping spider
 MONS:    demonic crawler / steelbarb worm / torpor snail / meliai
 KITEM:   R = milky-white gem
 KITEM:   O = gossamer rune of Zot
+KFEAT:   ^ = web trap
+KFEAT:   _ = .
+NSUBST:  d = 1:O / 3:d / 3:e / *:f
 NSUBST:  h = 2:9 / 2 = 4. / *= 6667....
-NSUBST:  9 = 3:13 / 1:2 / * = 6..
+NSUBST:  9 = 3:13 / 1:2 / * = 6.., ? = 1:_ / *:"
 SUBST:   5 = 5.., g = 6667....
 SUBST:   0 = 667...
 SUBST:   + = ^^^+
 SUBST:   " = ...xxW^
 SUBST:   - = ...cWW^^^
 SUBST:   . = .:20 x:2 ^:1
-KFEAT:   ^ = web trap
-KFEAT:   _ = .
-SUBST:   c : cx
-SUBST:   C : c
+SUBST:   c : cx, C : c
 : setup_endvault_loot(_G)
 MAP
   xxxxc--"""""@"""x""@5""""""--ccc
@@ -2463,9 +2463,9 @@ xcc....h..WWwwwCCCCCCwwwwwW...g-"-
 xcch.5...hWwwwCC----CCCwwwW...g-"-
 xc-......_WwwCC--0R---CwwwW....-"-
 xc-..h.._-WwwC--409__-CCwwW..0.-"-
-xc-.h.h_-"-"wC-0ddd0_--CwwW.5..-"-
+xc-.h.h_-"-?wC-0ddd0_--CwwW.5..-"-
 xc-..._-"---_+49dddd9-CCwwW...g-"-
-xc-.h.h_-"-"wC-0ddd0--CwwwW...g-"-
+xc-.h.h_-"-?wC-0ddd0--CwwwW...g-"-
 xc-..h.._"WwwC--409--CCwwwW..g.-"@
 xcc..5..._WwwCC--0_-CCwwwWW....-"-
 xcc.......WwwwCC----CwwwwW....5-"-
@@ -2481,7 +2481,8 @@ xxcc-.h.....""...g...."".......-"c
 ENDMAP
 
 ##########################################
-# Arachne Lair Rune Vault
+# Made pre-exile, but still named in her honour,
+# and also still named for easier statistics assessment.
 NAME:   johnstein_spider_rune_arachne_lair
 TAGS:   no_monster_gen
 ORIENT: float
@@ -2517,14 +2518,14 @@ KMONS:   3 = emperor scorpion / spark wasp w:5 / jorogumo
 KMONS:   4 = moth of wrath / ghost moth w:40 / sun moth
 KMONS:   5 = orb spider w:40 / demonic crawler
 KMONS:   6 = torpor snail / entropy weaver
-KMONS:   Z = Arachne, jorogumo
+KMONS:   Z = jorogumo
 KITEM:   O = gossamer rune of Zot
 KITEM:   o = milky-white gem
 KFEAT:   Y = web / floor w:40
 SHUFFLE: Gg / Hh / Ii / Jj / Kk / Ll
 SUBST:   G = O, g = o, HhIiJKL = %, jkl = .
 # thin out monsters and set up loot
-SUBST:   1 = 1..
+SUBST:   1 = 111.....
 NSUBST:  % = 2:d / 2:e / 2:f / * = def...
 NSUBST:  2 = 6 = 5. / 2:4 / 6 = 2. / *:1
 NSUBST:  3 = 4:3 / 1:6 / * = 2.
@@ -2534,9 +2535,9 @@ MAP
    ..cccccc5...5cccccc..
    .cc.Gcccc+++ccccH.cc.
    ccg4.c..2.2.2..c.4hcc
-  cc..3cc.2.2Z2.2.cc3..cc
+  cc..3cc.2.2.2.2.cc3..cc
  xc...cc.2'''''''2.cc...cx
- xc.2cc..1c''!''c1..cc2.cx
+ xc.2cc.Z1c''!''c1Z.cc2.cx
  xc..c.'1ccc!!!ccc1'.c..cx
 xxc.1.'''1c--!--c1'''.1.cxx
 xcc.1''''_"?????"_''''1.ccx
@@ -2554,7 +2555,7 @@ xcc.1''''_""???""_''''1.ccx
  xcc.1.'1ccc'!'ccc1'.1.ccx
  xcc..c..1c'''''c1..c..ccx
  xcc..cc.2'''''''2.cc..ccx
- xc2.ccc...2.Z.2...ccc.2cx
+ xc2.ccc..Z2...2Z..ccc.2cx
  xc..cccc1..222..1cccc..cx
  xc..cccc.1..2..1.cccc..cx
  xc2.ccc...........ccc.2cx
@@ -2590,7 +2591,7 @@ KITEM:  R = milky-white gem
 KITEM:  O = potion of ambrosia ident:type, gossamer rune of Zot
 KFEAT:  M = stone_wall
 KFEAT:  P = granite_statue
-NSUBST: S = 4:1 / 6 = 1. /*:., H = 2:5 / 1:6 / 1:7 / K
+NSUBST: S = 4:1 / 6 = 1. / *:., H = 4:5 / 1:6 / 1:7 / *:K
 SUBST:  K = 2 5:4 6:2 7:2 E:20, E = 3 4:30 .:20
 SUBST:  Q = W .:15
 NSUBST: d = 2:d / 2:e / 3:f / *=gggge
@@ -2651,7 +2652,7 @@ MONS:   broodmother
 KITEM:  P = milky-white gem
 KITEM:  O = potion of ambrosia ident:type, gossamer rune of Zot
 KFEAT:  ^ = web
-NSUBST: . = 96 = 1... / *:., 2 = 2:2 / *=2...
+NSUBST: . = 80 = 1... / *:., 2 = 2:2 / *=2...
 NSUBST: 6 = 4:6 / 4 = 456. / *= 4..
 NSUBST: d = 1:O / 1:P / 3:d / 3:e / 3:f
 SUBST:  3 = 3....
@@ -2716,7 +2717,7 @@ MONS:   emperor scorpion
 MONS:   radroach / spark wasp
 KITEM:  R = milky-white gem
 KITEM:  O = potion of ambrosia ident:type, gossamer rune of Zot
-NSUBST: 7 = 4:7 / * = 7..
+NSUBST: 7 = 4:7 / 1:. / * = 7..
 # bias the big monsters, randomly
 : if crawl.one_chance_in(3) then
     SUBST:  7 = 44456
@@ -2725,8 +2726,8 @@ NSUBST: 7 = 4:7 / * = 7..
 : else
     SUBST:  7 = 45666
 : end
-NSUBST: . = 16 = 3... / 16 = 2... / 16 = 1... / *:.
-NSUBST: ' = 12 = 1... / 16 = 2... / 1:3 / 1:3. / *:.
+NSUBST: . = 12 = 3... / 16 = 2... / 16 = 1... / *:.
+NSUBST: ' = 10 = 1... / 16 = 2... / 1:3 / 1:3. / *:.
 # bias the ruination level of the terrain
 : if crawl.one_chance_in(3) then
     SUBST:  A = cc.

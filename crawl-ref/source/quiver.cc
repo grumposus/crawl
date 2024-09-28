@@ -567,17 +567,6 @@ namespace quiver
 
             const item_def *weapon = you.weapon();
 
-            // TODO: is there any use case for allowing targeting in this case?
-            // if this check isn't here, it is treated as a clumsy melee attack
-            // XX this messaging is obsolete without ammo, but is this
-            // reachable somehow?
-            if (weapon && is_range_weapon(*weapon))
-            {
-                mprf("You do not have any ammo quivered for %s.",
-                                    you.weapon()->name(DESC_YOUR).c_str());
-                return;
-            }
-
             // This is redundant with a later check in fight_melee; but, the
             // way this check works, if the player overrides it once it won't
             // give a warning until they switch weapons. UI-wise, if there is
@@ -586,8 +575,7 @@ namespace quiver
                 return;
 
             target.isEndpoint = true; // is this needed? imported from autofight code
-            const reach_type reach_range = !weapon ? REACH_NONE
-                                                    : weapon_reach(*weapon);
+            const reach_type reach_range = you.reach_range();
 
             direction_chooser_args args;
             args.restricts = DIR_TARGET;
@@ -597,7 +585,7 @@ namespace quiver
             args.self = confirm_prompt_type::cancel;
 
             unique_ptr<targeter> hitfunc;
-            if (attack_cleaves(you, -1))
+            if (attack_cleaves(you))
             {
                 const int range = reach_range;
                 hitfunc = make_unique<targeter_cleave>(&you, you.pos(), range);
@@ -627,9 +615,6 @@ namespace quiver
             const int x_distance  = abs(delta.x);
             const int y_distance  = abs(delta.y);
             monster* mons = monster_at(target.target);
-            // don't allow targeting of submerged monsters
-            if (mons && mons->submerged())
-                mons = nullptr;
 
             if (x_distance > reach_range || y_distance > reach_range)
             {
@@ -697,8 +682,7 @@ namespace quiver
                 bool success = true;
                 monster *midmons;
                 if ((midmons = monster_at(middle))
-                    && !midmons->submerged()
-                    && !god_protects(&you, midmons, true)
+                    && !god_protects(&you, *midmons, true)
                     && (midmons->type != MONS_SPECTRAL_WEAPON
                         || !midmons->wont_attack())
                     && coinflip())
@@ -1048,7 +1032,6 @@ namespace quiver
         switch (s)
         {
         case SPELL_FULMINANT_PRISM:
-        case SPELL_GRAVITAS: // will autotarget to a monster if allowed, should we allow?
         case SPELL_PASSWALL: // targeted, but doesn't make sense with autotarget
         case SPELL_GOLUBRIAS_PASSAGE: // targeted, but doesn't make sense with autotarget
             return true;
@@ -1088,6 +1071,7 @@ namespace quiver
                                           // that are clutched, and spell
                                           // targeting handles this case.
         case SPELL_APPORTATION: // Apport doesn't target monsters at all
+        case SPELL_MAGNAVOLT:
             return true;
         default:
             return _spell_needs_manual_targeting(s);
@@ -1266,6 +1250,12 @@ namespace quiver
             qdesc.cprintf("%s", spell == SPELL_MAXWELLS_COUPLING ?
                                 "Capacitive Coupling" : spell_title(spell));
 
+            if (spell == SPELL_GRAVE_CLAW)
+            {
+                qdesc.cprintf(" (%d/%d)", you.props[GRAVE_CLAW_CHARGES_KEY].get_int()
+                                        , GRAVE_CLAW_MAX_CHARGES);
+            }
+
             if (fail_severity(spell) > 0)
             {
                 qdesc.cprintf(" (%s)",
@@ -1343,15 +1333,14 @@ namespace quiver
         case ABIL_KIKU_GIFT_CAPSTONE_SPELLS:
         case ABIL_SIF_MUNA_FORGET_SPELL:
         case ABIL_LUGONU_BLESS_WEAPON:
-        case ABIL_BEOGH_GIFT_ITEM:
         case ABIL_ASHENZARI_CURSE:
         case ABIL_RU_REJECT_SACRIFICES:
         case ABIL_HEPLIAKLQANA_IDENTITY:
-        case ABIL_STOP_RECALL:
         case ABIL_RENOUNCE_RELIGION:
         case ABIL_CONVERT_TO_BEOGH:
         case ABIL_OKAWARU_GIFT_WEAPON:
         case ABIL_OKAWARU_GIFT_ARMOUR:
+        case ABIL_INVENT_GIZMO:
         // high price zone
         case ABIL_ZIN_DONATE_GOLD:
         // not entirely pseudo, but doesn't make a lot of sense to quiver:
@@ -1391,16 +1380,15 @@ namespace quiver
         case ABIL_BLINKBOLT: // TODO: disable under nomove?
         case ABIL_RU_POWER_LEAP: // disable under nomove, or altogether?
         case ABIL_SPIT_POISON:
-        case ABIL_BREATHE_ACID:
+        case ABIL_CAUSTIC_BREATH:
         case ABIL_BREATHE_FIRE:
-        case ABIL_BREATHE_FROST:
+        case ABIL_GLACIAL_BREATH:
         case ABIL_BREATHE_POISON:
-        case ABIL_BREATHE_POWER:
-        case ABIL_BREATHE_STEAM:
-        case ABIL_BREATHE_MEPHITIC:
+        case ABIL_NULLIFYING_BREATH:
+        case ABIL_STEAM_BREATH:
+        case ABIL_NOXIOUS_BREATH:
         case ABIL_DAMNATION:
-        case ABIL_MAKHLEB_MINOR_DESTRUCTION:
-        case ABIL_MAKHLEB_MAJOR_DESTRUCTION:
+        case ABIL_MAKHLEB_DESTRUCTION:
         case ABIL_LUGONU_BANISH:
         case ABIL_BEOGH_SMITING:
         case ABIL_QAZLAL_UPHEAVAL:
@@ -1462,14 +1450,19 @@ namespace quiver
             {
             case ABIL_HOP:
             case ABIL_BLINKBOLT:
-            case ABIL_BREATHE_ACID:
+            case ABIL_COMBUSTION_BREATH:
+            case ABIL_GLACIAL_BREATH:
+            case ABIL_GALVANIC_BREATH:
+            case ABIL_CAUSTIC_BREATH:
+            case ABIL_NULLIFYING_BREATH:
+            case ABIL_STEAM_BREATH:
+            case ABIL_NOXIOUS_BREATH:
+            case ABIL_MUD_BREATH:
             case ABIL_DAMNATION:
             case ABIL_ELYVILON_HEAL_OTHER:
             case ABIL_LUGONU_BANISH:
             case ABIL_BEOGH_SMITING:
-            case ABIL_BEOGH_GIFT_ITEM:
             case ABIL_FEDHAS_OVERGROW:
-            case ABIL_DITHMENOS_SHADOW_STEP:
             case ABIL_QAZLAL_UPHEAVAL:
             case ABIL_RU_POWER_LEAP:
             case ABIL_USKAYAW_LINE_PASS:
@@ -1532,7 +1525,7 @@ namespace quiver
 
             // TODO: does non-targeted case come up?
             if (target.isCancel && !target.interactive && is_targeted())
-                mprf("No targets found!");
+                mpr("No targets found!");
 
             t = target; // copy back, in case they are different
         }
@@ -1860,6 +1853,7 @@ namespace quiver
             case MISC_HORN_OF_GERYON:
             case MISC_QUAD_DAMAGE:
             case MISC_PHANTOM_MIRROR:
+            case MISC_GRAVITAMBOURINE:
                 return false;
             default:
                 return true;
@@ -2860,7 +2854,7 @@ namespace quiver
             {
                 set_to_quiver(make_shared<quiver::action>());
                 // TODO maybe drop this messaging?
-                mprf("Clearing quiver.");
+                mpr("Clearing quiver.");
                 return false;
             }
             else if (isadigit(key))

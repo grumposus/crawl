@@ -71,8 +71,8 @@ enum monclass_flag_type : uint64_t
     /// monster digs through rock
     M_BURROWS           = BIT(19),
 
-    /// monster can submerge
-    M_SUBMERGES         = BIT(20),
+    /// monster passively applies an enchantment in LoS of itself
+    M_HAS_AURA          = BIT(20),
 
     /// monster is a unique
     M_UNIQUE            = BIT(21),
@@ -110,7 +110,9 @@ enum monclass_flag_type : uint64_t
     /// can do damage when attacked in melee
     M_SPINY             = BIT(32),
 
-                        //BIT(33),
+    // Prefers not to move closer to its foe if it's already in range to cast
+    // spells against it.
+    M_CAUTIOUS          = BIT(33),
 
     /// not a valid polymorph target (but can be polymorphed)
     M_NO_POLY_TO        = BIT(34),
@@ -181,6 +183,9 @@ enum monclass_flag_type : uint64_t
     M_THUNDER_RING      = BIT(58),
     M_FIRE_RING         = BIT(59),
     M_MIASMA_RING       = BIT(60),
+
+    // monster is made of liquid and is immune to webs, nets, and constriction
+    M_AMORPHOUS         = BIT(61),
 };
 DEF_BITFIELD(monclass_flags_t, monclass_flag_type);
 
@@ -283,7 +288,14 @@ enum monster_flag_type : uint64_t
     /// possibly got piety with TSO
     MF_TSO_SEEN           = BIT(38),
 
-    // MF_BAND_LEADER      = BIT(40) // Created as the leader of a band
+    /// Part of an orc apostle band
+    MF_APOSTLE_BAND       = BIT(39),
+
+    // Created as the leader of a band
+    MF_BAND_LEADER        = BIT(40),
+
+    /// Will prefer not to approach enemies it's already in spellcast range of
+    MF_CAUTIOUS           = BIT(41),
 };
 DEF_BITFIELD(monster_flags_t, monster_flag_type);
 

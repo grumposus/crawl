@@ -99,6 +99,7 @@ enum dungeon_feature_type
 #if TAG_MAJOR_VERSION > 34
     DNGN_TRAP_NET,
     DNGN_TRAP_PLATE,
+    DNGN_ORB_DAIS,
 #endif
 #if TAG_MAJOR_VERSION == 34
     DNGN_UNDISCOVERED_TRAP,
@@ -226,7 +227,6 @@ enum dungeon_feature_type
     DNGN_ALTAR_GOZAG,
     DNGN_ALTAR_QAZLAL,
     DNGN_ALTAR_RU,
-    DNGN_ALTAR_PAKELLAS,
     DNGN_ALTAR_USKAYAW,
     DNGN_ALTAR_HEPLIAKLQANA,
     DNGN_ALTAR_WU_JIAN,
@@ -237,6 +237,9 @@ enum dungeon_feature_type
     DNGN_FOUNTAIN_BLUE,
     DNGN_FOUNTAIN_SPARKLING,           // aka 'Magic Fountain' {dlb}
     DNGN_FOUNTAIN_BLOOD,
+#if TAG_MAJOR_VERSION > 34
+    DNGN_FOUNTAIN_EYES,
+#endif
 #if TAG_MAJOR_VERSION == 34
     DNGN_DRY_FOUNTAIN_BLUE,
     DNGN_DRY_FOUNTAIN_SPARKLING,
@@ -244,6 +247,9 @@ enum dungeon_feature_type
 #endif
     DNGN_DRY_FOUNTAIN,
 #if TAG_MAJOR_VERSION > 34
+    DNGN_CACHE_OF_BAKED_GOODS,
+    DNGN_CACHE_OF_FRUIT,
+    DNGN_CACHE_OF_MEAT,
     DNGN_RUNELIGHT,
 #endif
 
@@ -284,6 +290,7 @@ enum dungeon_feature_type
     DNGN_ENTER_DESOLATION,
 #if TAG_MAJOR_VERSION > 34
     DNGN_ENTER_ARENA,
+    DNGN_ENTER_CRUCIBLE,
 #endif
 
     DNGN_EXIT_ZIGGURAT,
@@ -304,6 +311,7 @@ enum dungeon_feature_type
     DNGN_EXIT_DESOLATION,
 #if TAG_MAJOR_VERSION > 34
     DNGN_EXIT_ARENA,
+    DNGN_EXIT_CRUCIBLE,
 #endif
 #if TAG_MAJOR_VERSION == 34
 
@@ -357,6 +365,14 @@ enum dungeon_feature_type
     DNGN_MUD,
     DNGN_BINDING_SIGIL,
     DNGN_METAL_STATUE,
+    DNGN_CACHE_OF_FRUIT,
+    DNGN_CACHE_OF_MEAT,
+    DNGN_ORB_DAIS,
+    DNGN_ENTER_CRUCIBLE,
+    DNGN_EXIT_CRUCIBLE,
+    DNGN_FOUNTAIN_EYES,
+    DNGN_CACHE_OF_BAKED_GOODS,
+
 #endif
 
     NUM_FEATURES

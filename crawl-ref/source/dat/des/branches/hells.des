@@ -135,7 +135,8 @@ MONS:    ice fiend / shard shrike
 MONS:    wendigo band / simulacrum w:20
 SUBST:   l = w, F = f, %* = ., 2 = 1, 3456 = 2
 :  elseif you.in_branch("Abyss") then
-MONS:    blizzard demon / frost giant / dancing weapon ; battleaxe ego:freezing ident:type w:5
+MONS:    blizzard demon / frost giant / \
+         dancing weapon ; battleaxe ego:freezing ident:type w:5
 MONS:    simulacrum w:12 / white draconian / water elemental w:5 / \
          white very ugly thing w:15 / ice devil w:8
 MONS:    balrug / hellion / fire crab w:5 / hellephant w:5
@@ -190,18 +191,18 @@ DEPTH:  Dis, !Dis:$, Geh, !Geh:$, Coc, !Coc:$, Tar, !Tar:$
 ORIENT: centre
 : if you.in_branch("Dis") then
 KMONS:  1 = hell sentinel
-KMONS:  2 = hell beast / hellion / reaper / tormentor / shadow demon / cacodemon
+KMONS:  2 = sin beast / hellion / reaper / tormentor / shadow demon / cacodemon
 : elseif you.in_branch("Geh") then
 KMONS:  1 = brimstone fiend
-KMONS:  2 = hell beast / hellion / reaper / tormentor / shadow demon / balrug
+KMONS:  2 = sin beast / hellion / reaper / tormentor / shadow demon / balrug
 : elseif you.in_branch("Coc") then
 KMONS:  1 = ice fiend
-KMONS:  2 = hell beast / hellion / reaper / tormentor / shadow demon / \
+KMONS:  2 = sin beast / hellion / reaper / tormentor / shadow demon / \
             blizzard demon
 : else
 KMONS:  1 = tzitzimitl
-KMONS:  2 = hell beast / hellion / reaper / tormentor / shadow demon / \
-            green death / lorocyproca
+KMONS:  2 = sin beast / hellion / reaper / tormentor / shadow demon / \
+            green death
 : end
 SUBST:  D = c.
 MAP
@@ -230,16 +231,17 @@ KMONS:   2 = brimstone fiend
 KMONS:   3 = ice fiend
 KMONS:   4 = tzitzimitl
 KFEAT:   ! = iron_grate
-SHUFFLE: 1!/2l/3w/4m
+SHUFFLE: 1! / 2l / 3w / 4m
+KMASK:   .wl = no_monster_gen
 MAP
     .....
    .!!!!!.
   ..!.1.!..
  ...........
 .mm.......ll.
-.m.........l.
-.m4...{...2l.
-.m.........l.
+.m...'''...l.
+.m4..'{'..2l.
+.m...'''...l.
 .mm.......ll.
  ...........
   ..w.3.w..

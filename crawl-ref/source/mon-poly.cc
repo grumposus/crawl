@@ -10,6 +10,7 @@
 #include "artefact.h"
 #include "art-enum.h"
 #include "attitude-change.h"
+#include "colour.h"
 #include "delay.h"
 #include "describe.h"
 #include "dgn-overview.h"
@@ -87,7 +88,20 @@ void monster_drop_things(monster* mons,
         }
 
         // If a monster is swimming, the items are ALREADY underwater.
-        move_item_to_grid(&item, mons->pos(), mons->swimming());
+        if (move_item_to_grid(&item, mons->pos(), mons->swimming())
+            && player_under_penance(GOD_GOZAG)
+            // Dropping items into water/lava may have destroyed them
+            && item != NON_ITEM
+            && env.item[item].base_type == OBJ_GOLD
+            && you.see_cell(mons->pos())
+            && x_chance_in_y(env.item[item].quantity, 100)
+            && you.can_be_dazzled())
+        {
+            string msg = make_stringf("%s dazzles you with the glint of coin.",
+                                       god_name(GOD_GOZAG).c_str());
+            mprf(MSGCH_GOD, GOD_GOZAG, "%s", msg.c_str());
+            blind_player(10 + random2(8), ETC_GOLD);
+        }
         mons->inv[i] = NON_ITEM;
     }
 }
@@ -204,8 +218,8 @@ void change_monster_type(monster* mons, monster_type targetc, bool do_seen)
     // trj spills out jellies when polied, as if he'd been hit for mhp.
     if (mons->type == MONS_ROYAL_JELLY)
     {
-        simple_monster_message(*mons, "'s form twists and warps, and jellies "
-                               "spill out!");
+        simple_monster_message(*mons, " form twists and warps, and jellies "
+                               "spill out!", true);
         trj_spawn_fineff::schedule(nullptr, mons, mons->pos(),
                                    mons->hit_points);
     }
@@ -240,6 +254,12 @@ void change_monster_type(monster* mons, monster_type targetc, bool do_seen)
         name   = "shaped Serpent of Hell";
         flags |= MF_NAME_SUFFIX;
     }
+    else if (mons->type == MONS_ENCHANTRESS
+             || mons->mname == "shaped Enchantress")
+    {
+        name   = "shaped Enchantress";
+        flags |= MF_NAME_SUFFIX;
+    }
     else if (!mons->mname.empty())
     {
         if (flags & MF_NAME_MASK)
@@ -256,7 +276,7 @@ void change_monster_type(monster* mons, monster_type targetc, bool do_seen)
     {
         name = mons->name(DESC_PLAIN, true);
 
-        // "Blork the orc" and similar.
+        // "Blorkula the orcula" and similar.
         const size_t the_pos = name.find(" the ");
         if (the_pos != string::npos)
             name = name.substr(0, the_pos);
@@ -287,13 +307,13 @@ void change_monster_type(monster* mons, monster_type targetc, bool do_seen)
     mon_enchant charm     = mons->get_ench(ENCH_CHARM);
     mon_enchant shifter   = mons->get_ench(ENCH_GLOWING_SHAPESHIFTER,
                                            ENCH_SHAPESHIFTER);
-    mon_enchant sub       = mons->get_ench(ENCH_SUBMERGED);
     mon_enchant summon    = mons->get_ench(ENCH_SUMMON);
     mon_enchant tp        = mons->get_ench(ENCH_TP);
     mon_enchant vines     = mons->get_ench(ENCH_AWAKEN_VINES);
     mon_enchant forest    = mons->get_ench(ENCH_AWAKEN_FOREST);
     mon_enchant hexed     = mons->get_ench(ENCH_HEXED);
     mon_enchant insanity  = mons->get_ench(ENCH_FRENZIED);
+    mon_enchant vengeance = mons->get_ench(ENCH_VENGEANCE_TARGET);
 
     mons->number       = 0;
 
@@ -329,21 +349,13 @@ void change_monster_type(monster* mons, monster_type targetc, bool do_seen)
     mons->add_ench(fabj);
     mons->add_ench(charm);
     mons->add_ench(shifter);
-    mons->add_ench(sub);
     mons->add_ench(summon);
     mons->add_ench(tp);
     mons->add_ench(vines);
     mons->add_ench(forest);
     mons->add_ench(hexed);
     mons->add_ench(insanity);
-
-    // Allows for handling of submerged monsters which polymorph into
-    // monsters that can't submerge on this square.
-    if (mons->has_ench(ENCH_SUBMERGED)
-        && !monster_can_submerge(mons, env.grid(mons->pos())))
-    {
-        mons->del_ench(ENCH_SUBMERGED);
-    }
+    mons->add_ench(vengeance);
 
     mons->ench_countdown = old_ench_countdown;
 
@@ -581,13 +593,14 @@ bool monster_polymorph(monster* mons, monster_type targetc,
     if (mons_demon_tier(mons->type) == -1)
     {
         return simple_monster_message(*mons,
-            "'s appearance momentarily alters.");
+            " appearance momentarily alters.", true);
     }
 
     targetc = _concretize_target(*mons, targetc, power);
     if (targetc == MONS_NO_MONSTER)
         return simple_monster_message(*mons, " shudders.");
 
+    const bool was_invisible = mons->has_ench(ENCH_INVIS) && !mons->friendly();
     bool could_see = you.can_see(*mons);
     bool need_note = could_see && mons_is_notable(*mons);
     string old_name_a = mons->full_name(DESC_A);
@@ -624,10 +637,7 @@ bool monster_polymorph(monster* mons, monster_type targetc,
         mprf("%s %s%s!", old_name_the.c_str(), verb.c_str(), obj.c_str());
     }
     else if (can_see)
-    {
         mprf("%s appears out of thin air!", mons->name(DESC_A).c_str());
-        autotoggle_autopickup(false);
-    }
     else
         player_messaged = false;
 
@@ -637,6 +647,23 @@ bool monster_polymorph(monster* mons, monster_type targetc,
                                   : "something unseen";
 
         take_note(Note(NOTE_POLY_MONSTER, 0, 0, old_name_a, new_name));
+    }
+
+    const bool is_invisible = mons->has_ench(ENCH_INVIS) && !mons->friendly();
+    if (you.see_cell(mons->pos()))
+    {
+        if (was_invisible && !is_invisible)
+        {
+            // If we poly an invisible monster reactivate autopickup.
+            // We need to check for actual invisibility rather than
+            // whether we can see the monster. There are several edge
+            // cases where a monster is visible to the player but we
+            // still need to turn autopickup back on, such as
+            // TSO's halo or sticky flame.
+            autotoggle_autopickup(false);
+        }
+        else if (could_see && !can_see)
+            autotoggle_autopickup(true);
     }
 
     // do this here, so that any "changes into" notes come first
@@ -751,7 +778,7 @@ void seen_monster(monster* mons)
     {
         const item_def *wyrmbane = you.weapon();
         if (wyrmbane && mons->dragon_level() > wyrmbane->plus)
-            mprf("<green>Wyrmbane glows as a worthy foe approaches.</green>");
+            mpr("<green>Wyrmbane glows as a worthy foe approaches.</green>");
     }
 
     // attempt any god conversions on first sight
@@ -767,6 +794,6 @@ void seen_monster(monster* mons)
         mons->flags |= MF_TSO_SEEN;
     }
 
-    if (mons_allows_beogh(*mons))
+    if (mons_offers_beogh_conversion(*mons))
         env.level_state |= LSTATE_BEOGH;
 }

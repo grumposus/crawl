@@ -339,15 +339,15 @@ static int moninf_get_target_desc(lua_State *ls)
     return 1;
 }
 
-/*** Returns the string displayed if you target this monster with a weapon (or unarmed attack).
- * @treturn string (such as "about 18% to evade your dagger")
+/*** Returns the string displayed in xv for your current weapon hit chance.
+ * @treturn string (such as "about 82% to hit with your dagger")
  * @function target_weapon
  */
 static int moninf_get_target_weapon(lua_State *ls)
 {
     MONINF(ls, 1, mi);
     ostringstream result;
-    describe_to_hit(*mi, result, you.weapon());
+    describe_to_hit(*mi, result, you.weapon(), true);
     lua_pushstring(ls, result.str().c_str());
     return 1;
 }
@@ -375,9 +375,9 @@ static int moninf_get_target_throw(lua_State *ls)
 {
     MONINF(ls, 1, mi);
     item_def *item = *(item_def **) luaL_checkudata(ls, 2, ITEM_METATABLE);
-    ranged_attack attk(&you, nullptr, nullptr, item, false);
-    string d = make_stringf("%d%% to hit", to_hit_pct(*mi, attk, false));
-    lua_pushstring(ls, d.c_str());
+    ostringstream result;
+    describe_to_hit(*mi, result, item);
+    lua_pushstring(ls, result.str().c_str());
     return 1;
 }
 
@@ -434,6 +434,18 @@ LUAFN(moninf_get_holiness)
     }
     else
         PLUARET(string, holiness_description(mi->holi).c_str());
+}
+
+/*** Get the monster's intelligence.
+ * Returns a string describing the intelligence level of the monster. Possible
+ * descriptions: "Mindless", "Animal", or "Human"
+ * @treturn string
+ * @function intelligence
+ */
+LUAFN(moninf_get_intelligence)
+{
+    MONINF(ls, 1, mi);
+    PLUARET(string, intelligence_description(mi->intel()));
 }
 
 /*** Get the monster's average depth of (random) generation in the current branch
@@ -541,19 +553,18 @@ LUAFN(moninf_get_spells)
 {
     MONINF(ls, 1, mi);
 
-    lua_newtable(ls);
-
     if (!mi->has_spells())
+    {
+        lua_newtable(ls);
         return 1;
+    }
 
     const vector<mon_spell_slot> &unique_slots = get_unique_spells(*mi);
     vector<string> spell_titles;
 
     for (const auto& slot : unique_slots)
         spell_titles.emplace_back(spell_title(slot.spell));
-
     clua_stringtable(ls, spell_titles);
-    lua_rawseti(ls, -2, 1);
 
     return 1;
 }
@@ -678,7 +689,7 @@ LUAFN(moninf_get_can_be_constricted)
         monster dummy;
         dummy.type = mi->type;
         dummy.base_monster = mi->base_type;
-        lua_pushboolean(ls, dummy.res_constrict() < 3);
+        lua_pushboolean(ls, !dummy.res_constrict());
     }
     return 1;
 }
@@ -732,6 +743,17 @@ LUAFN(moninf_get_is_stationary)
 {
     MONINF(ls, 1, mi);
     lua_pushboolean(ls, mons_class_is_stationary(mi->type));
+    return 1;
+}
+
+/*** Can this monster use doors?
+ * @treturn boolean
+ * @function can_use_doors
+ */
+LUAFN(moninf_get_can_use_doors)
+{
+    MONINF(ls, 1, mi);
+    lua_pushboolean(ls, mons_class_itemuse(mi->type) >= MONUSE_OPEN_DOORS);
     return 1;
 }
 
@@ -832,6 +854,7 @@ static const struct luaL_reg moninf_lib[] =
     MIREG(is_firewood),
     MIREG(stabbability),
     MIREG(holiness),
+    MIREG(intelligence),
     MIREG(attitude),
     MIREG(threat),
     MIREG(is_caught),
@@ -843,6 +866,7 @@ static const struct luaL_reg moninf_lib[] =
     MIREG(reach_range),
     MIREG(is_unique),
     MIREG(is_stationary),
+    MIREG(can_use_doors),
     MIREG(damage_level),
     MIREG(damage_desc),
     MIREG(desc),

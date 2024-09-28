@@ -17,6 +17,8 @@ _armour_animal_
 # microorganisms
 Amoeba
 
+Tardigrade
+
 # insects
 Ant
 
@@ -81,6 +83,8 @@ Turtle
 Barracuda
 
 Catfish
+
+Cichlid
 
 Mackerel
 
@@ -157,7 +161,7 @@ Circus Animal
 
 Monkey's Uncle
 
-#classical mythical animals
+# classical mythical animals
 Centaur
 
 Cockatrice
@@ -173,6 +177,8 @@ Hecatoncheires
 Hippogriff
 
 Kraken
+
+Pooka
 
 Skiapode
 
@@ -200,15 +206,49 @@ Shishi
 
 Tsukumogami
 
-# Brasilia
+# South America
+
+Carbunclo
+
+Cherruve
+
+Cuero
 
 Curupira
 
+Ebigane
+
+Gasogonaga
+
 Mpinguari
+
+Tapire-iauara
+
+# Africa
+
+Biloko
+
+Guiamala
+
+Impundulu
+
+Isitwalangcengce
+
+Nkala
+
+Zankallala
+
+# South East Asia
+
+Bakunawa
+
+Minokawa
 
 # Unlikely hybrids
 
-Giraffatuar
+Giraffataur
+
+Elephantaur
 
 Mertaur
 
@@ -233,6 +273,12 @@ Dropbear
 
 Jackalope
 
+Jersey Devil
+
+Snallygaster
+
+Tatzelwurm
+
 Wild Haggis
 
 Yeti
@@ -245,9 +291,17 @@ Daisies
 
 Lilacs
 
+Periwinkles
+
+Purple Dead-Nettles
+
 Tulips
 
+Violets
+
 the Garden
+
+the Horehound
 
 the Lily
 
@@ -1029,10 +1083,13 @@ Vermicelli
 
 Macaroni
 
+Strozzapreti
+
 w:1
 the Pastamancer
 
-
+# sometimes pasta-adjacent
+Meatballs
 %%%%
 _card_
 
